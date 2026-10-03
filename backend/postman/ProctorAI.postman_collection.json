@@ -1,0 +1,4850 @@
+{
+  "info": {
+    "_postman_id": "0ea99d29-d3b0-47cc-804b-0e44216c6528",
+    "name": "ProctorAI - Complaint Management API",
+    "description": "Reactive Spring microservices behind the API gateway (default http://localhost:7050).\n\n**Quick start**\n1. Import this collection and the `ProctorAI Local` environment, then select the environment.\n2. Start the stack: `./gradlew runAll` (Postgres, MinIO and Redis are started for you).\n3. Run **Auth / Login (admin)**. The httpOnly `token` (access) and `refresh_token` cookies are stored in Postman's cookie jar.\n4. Run requests top to bottom: create requests save ids (userId, roleId, departmentId, complaintId, fileId, notificationId ...) into collection variables.\n\n**Sessions.** The access token is short lived (JWT_ACCESS_EXPIRE_IN_SEC). When a request returns 401 the collection tries `POST /auth/refresh` automatically and tells you to re-send. Use the *body delivery* login/refresh requests for clients without cookies.\n\n**Authorization** is enforced by PostgreSQL row level security and runtime roles/permissions: 404 can mean 'not visible to you', 403 means 'visible but not allowed'.\n\n**Folders**: Health, Auth, Users, Roles & Permissions, Departments, Custom Fields, Complaints (comments, history, stats), Files (S3 presigned upload/download), Notifications (inbox, realtime SSE, devices, group send, admin FCM integration), Face Recognition (enroll, recognize, manage enrollments).\n\n**Admin web panel** for push integration: open {{baseUrl}}/notifications/panel in a browser.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": {
+      "major": 1,
+      "minor": 6,
+      "patch": 0
+    }
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Gateway health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sets the `token` httpOnly cookie. Postman keeps it in its cookie jar, so later requests are authenticated automatically. Logging in as another user replaces the cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('currentUserId', b.user.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (teacher)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('currentUserId', b.user.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (student)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('currentUserId', b.user.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Rotates the refresh token: reads the `refresh_token` cookie (or a JSON body `{\"refreshToken\": \"...\"}`), returns a new access token and a NEW refresh token, and sets both cookies. Reusing an already-used refresh token revokes the whole session family. Call this when an API request returns 401 because the access token expired."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token (body delivery, for mobile/API clients)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Token-Delivery",
+                "value": "body"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Same as above, but tokens are also returned in the JSON body (accessToken, refreshToken) for clients that cannot use cookies."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('refreshToken', b.tokenInfo.refreshToken); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (admin, body delivery)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Token-Delivery",
+                "value": "body"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Returns accessToken and refreshToken in the body as well as cookies. Use `Authorization: Bearer {{accessToken}}` from non-browser clients."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('refreshToken', b.tokenInfo.refreshToken); } catch (e) {} }",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('accessToken', b.tokenInfo.accessToken); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Revokes the current refresh token session and clears both cookies."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout everywhere",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout-all"
+              ]
+            },
+            "description": "Revokes every refresh token of the logged-in user (all devices). Requires a valid access token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Two cookies: `token` (access JWT, short lived) and `refresh_token` (opaque, rotated on every refresh, only sent to /auth). Lifetimes come from JWT_ACCESS_EXPIRE_IN_SEC and JWT_REFRESH_EXPIRE_IN_SEC. `Authorization: Bearer <jwt>` is also accepted."
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=0&size=10&sortBy=createdAt&direction=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "direction",
+                  "value": "desc"
+                },
+                {
+                  "key": "name",
+                  "value": "ilike.%stu%",
+                  "disabled": true
+                },
+                {
+                  "key": "enabled",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "cf.cgpa",
+                  "value": "gt.7",
+                  "disabled": true
+                },
+                {
+                  "key": "cf.roll_number",
+                  "value": "eq.AB1234",
+                  "disabled": true
+                },
+                {
+                  "key": "departmentId",
+                  "value": "{{departmentId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "roleId",
+                  "value": "{{roleId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Filters: `field=value` (eq) or `field=op.value` with ops eq, neq, gt, gte, lt, lte, like, ilike, in, between, is. Combine with `or=(field.op.value,field.op.value)`. Custom fields: `cf.<key>=op.value`. Paging: page, size (max 100), sortBy, direction (asc|desc).\n\nMembership filters: `departmentId` and `roleId` accept an id (`departmentId={{departmentId}}`), a list (`roleId=in.(id1,id2)`), exclusion (`roleId=neq.id`) or `is.null` for users with no department or no role."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List users in a department",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=0&size=10&departmentId={{departmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "departmentId",
+                  "value": "{{departmentId}}"
+                }
+              ]
+            },
+            "description": "Users who belong to the given department. Combine with any other filter."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List users with a role",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=0&size=10&roleId={{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "roleId",
+                  "value": "{{roleId}}"
+                }
+              ]
+            },
+            "description": "Users who hold the given role. Use `roleId=in.(id1,id2)` for any of several roles."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List users without a department",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=0&size=10&departmentId=is.null",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "departmentId",
+                  "value": "is.null"
+                }
+              ]
+            },
+            "description": "Users who are not a member of any department. `roleId=is.null` works the same way for users without a role."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - roles (with permissions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me",
+                "roles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me",
+                "permissions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me",
+                "departments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - events (SSE stream)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me",
+                "events"
+              ]
+            },
+            "description": "Server-sent events for bulk import progress. Keep this open while running 'Import users'."
+          }
+        },
+        {
+          "name": "Create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Stu One\",\n  \"email\": \"stu1@college.com\",\n  \"password\": \"password123\",\n  \"roles\": [\n    \"{{roleId}}\"\n  ],\n  \"departments\": [\n    \"{{departmentId}}\"\n  ],\n  \"customFields\": {\n    \"roll_number\": \"AB1234\",\n    \"cgpa\": 8.5\n  },\n  \"enabled\": true,\n  \"verified\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Custom fields are validated against the definitions that apply to the user's roles and departments."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('userId', b.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create users (bulk)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "bulk"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"name\": \"Bulk One\",\n    \"email\": \"bulk1@college.com\",\n    \"password\": \"password123\",\n    \"roles\": [\n      \"{{roleId}}\"\n    ]\n  },\n  {\n    \"name\": \"Bulk Two\",\n    \"email\": \"bulk2@college.com\",\n    \"password\": \"password123\",\n    \"roles\": [\n      \"{{roleId}}\"\n    ]\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download import template",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/import/template?format=csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "import",
+                "template"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv",
+                  "description": "csv | xlsx | json"
+                }
+              ]
+            },
+            "description": "Generated from the live roles/departments/custom-field definitions, so the example row always matches what this deployment actually accepts."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Import users (csv / json / xlsx)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "import"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "description": "Columns: name,email,password,roles,departments,enabled,verified, plus one column per active custom field defined for users. Roles are role NAMES (not ids), departments are department CODES (not ids) - both `|`-separated for multiple. Unknown extra columns are rejected up front, before the import starts. Download `GET /users/import/template` (?format=csv|xlsx|json) for the exact current columns. Progress arrives on the SSE stream."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update user (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Stu One\",\n  \"email\": \"stu1@college.com\",\n  \"enabled\": true,\n  \"verified\": true,\n  \"departments\": [\n    \"{{departmentId}}\"\n  ],\n  \"roles\": [\n    \"{{roleId}}\"\n  ],\n  \"customFields\": {\n    \"roll_number\": \"AB1234\",\n    \"cgpa\": 9\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Replaces roles, departments and (when provided) custom fields. Password is optional."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Stu One Updated\",\n  \"customFields\": {\n    \"cgpa\": 9.2,\n    \"skills\": null\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Merges provided fields. A custom field set to null is removed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "roles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "permissions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "departments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete users (bulk)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "bulk"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  \"{{userId}}\"\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Roles & Permissions",
+      "item": [
+        {
+          "name": "List roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles?page=0&size=10&sortBy=level&direction=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "level"
+                },
+                {
+                  "key": "direction",
+                  "value": "asc"
+                },
+                {
+                  "key": "name",
+                  "value": "ilike.%adm%",
+                  "disabled": true
+                },
+                {
+                  "key": "level",
+                  "value": "lte.20",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Filters: `field=value` (eq) or `field=op.value` with ops eq, neq, gt, gte, lt, lte, like, ilike, in, between, is. Combine with `or=(field.op.value,field.op.value)`. Custom fields: `cf.<key>=op.value`. Paging: page, size (max 100), sortBy, direction (asc|desc)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List permissions (catalog)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles/permissions?page=0&size=200",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "permissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "200"
+                },
+                {
+                  "key": "entity",
+                  "value": "complaints",
+                  "disabled": true
+                },
+                {
+                  "key": "action",
+                  "value": "read",
+                  "disabled": true
+                },
+                {
+                  "key": "scope",
+                  "value": "all",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Permission = entity + action (read/write/update/delete) + scope (own/department/all)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('permissionId', b.content[0].id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create role (runtime)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"counselor\",\n  \"description\": \"Cross-department counselor\",\n  \"level\": 30,\n  \"permissions\": [\n    \"{{permissionId}}\"\n  ],\n  \"revealIdentity\": false,\n  \"customFields\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "`level`: lower number = more privileged. You can only create roles at or below your own level and only grant permissions you hold. `revealIdentity=true` lets complaint reporters with this role be visible to the subject."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('roleId', b.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get role (with permissions)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update role (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"counselor\",\n  \"description\": \"Updated\",\n  \"level\": 30,\n  \"revealIdentity\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Patched\",\n  \"revealIdentity\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Role permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}",
+                "permissions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replace role permissions (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}",
+                "permissions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  \"{{permissionId}}\"\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add role permissions (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}",
+                "permissions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  \"{{permissionId}}\"\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove role permissions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}",
+                "permissions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  \"{{permissionId}}\"\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove all role permissions",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}/permissions/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}",
+                "permissions",
+                "all"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Departments",
+      "item": [
+        {
+          "name": "List departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments?page=0&size=10&sortBy=createdAt&direction=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "direction",
+                  "value": "desc"
+                },
+                {
+                  "key": "code",
+                  "value": "eq.CS",
+                  "disabled": true
+                },
+                {
+                  "key": "active",
+                  "value": "true",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Filters: `field=value` (eq) or `field=op.value` with ops eq, neq, gt, gte, lt, lte, like, ilike, in, between, is. Combine with `or=(field.op.value,field.op.value)`. Custom fields: `cf.<key>=op.value`. Paging: page, size (max 100), sortBy, direction (asc|desc)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Computer Science\",\n  \"code\": \"CS\",\n  \"description\": \"CSE department\",\n  \"active\": true,\n  \"customFields\": {\n    \"head_of_department\": \"Dr X\",\n    \"established\": \"1999-05-01\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('departmentId', b.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create departments (bulk)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "bulk"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"name\": \"Electrical\",\n    \"code\": \"EE\"\n  },\n  {\n    \"name\": \"Mechanical\",\n    \"code\": \"ME\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get department",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update department (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Computer Science\",\n  \"code\": \"CS\",\n  \"description\": \"Updated\",\n  \"active\": true,\n  \"customFields\": {\n    \"head_of_department\": \"Dr Y\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch department",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Patched\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}",
+                "members"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add members",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\n    \"{{userId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove members",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\n    \"{{userId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete department",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments",
+                "{{departmentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Custom Fields",
+      "item": [
+        {
+          "name": "List definitions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields?entity=users&size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields"
+              ],
+              "query": [
+                {
+                  "key": "entity",
+                  "value": "users"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
+                },
+                {
+                  "key": "active",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "key",
+                  "value": "eq.cgpa",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Filters: `field=value` (eq) or `field=op.value` with ops eq, neq, gt, gte, lt, lte, like, ilike, in, between, is. Combine with `or=(field.op.value,field.op.value)`. Custom fields: `cf.<key>=op.value`. Paging: page, size (max 100), sortBy, direction (asc|desc)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Applicable definitions (form builder)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields/applicable?entity=users&roleId={{roleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields",
+                "applicable"
+              ],
+              "query": [
+                {
+                  "key": "entity",
+                  "value": "users"
+                },
+                {
+                  "key": "roleId",
+                  "value": "{{roleId}}"
+                },
+                {
+                  "key": "departmentId",
+                  "value": "{{departmentId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Definitions that apply to a record with the given roles/departments. Repeat roleId / departmentId for several."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create - text (users, students only, required, pattern)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"users\",\n  \"key\": \"roll_number\",\n  \"label\": \"Roll number\",\n  \"dataType\": \"text\",\n  \"required\": true,\n  \"pattern\": \"^[A-Z]{2}[0-9]{4}$\",\n  \"maxLength\": 20,\n  \"appliesToRoleId\": \"{{roleId}}\",\n  \"sortOrder\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "entity: users | departments | roles | complaints. dataType: text | number | bool | date | select | multi_select. Requires the custom_fields write permission."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('customFieldId', b.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create - number (min/max)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"users\",\n  \"key\": \"cgpa\",\n  \"label\": \"CGPA\",\n  \"dataType\": \"number\",\n  \"minValue\": 0,\n  \"maxValue\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create - select (complaints of one department)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"complaints\",\n  \"key\": \"hostel_block\",\n  \"label\": \"Hostel block\",\n  \"dataType\": \"select\",\n  \"options\": [\n    \"A\",\n    \"B\",\n    \"C\"\n  ],\n  \"appliesToDepartmentId\": \"{{departmentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create - multi_select",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"users\",\n  \"key\": \"skills\",\n  \"label\": \"Skills\",\n  \"dataType\": \"multi_select\",\n  \"options\": [\n    \"java\",\n    \"python\",\n    \"sql\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create - date (departments)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"departments\",\n  \"key\": \"established\",\n  \"label\": \"Established\",\n  \"dataType\": \"date\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create - bool with default (complaints)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"complaints\",\n  \"key\": \"needs_followup\",\n  \"label\": \"Needs follow-up\",\n  \"dataType\": \"bool\",\n  \"defaultValue\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get definition",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields/{{customFieldId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields",
+                "{{customFieldId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update definition (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields/{{customFieldId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields",
+                "{{customFieldId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Roll no.\",\n  \"helpText\": \"Format AB1234\",\n  \"required\": true,\n  \"pattern\": \"^[A-Z]{2}[0-9]{4}$\",\n  \"maxLength\": 20,\n  \"sortOrder\": 1,\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "key, entity and dataType are immutable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch definition",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields/{{customFieldId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields",
+                "{{customFieldId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Roll number\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete definition (also deletes its values)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/custom-fields/{{customFieldId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "custom-fields",
+                "{{customFieldId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Complaints",
+      "item": [
+        {
+          "name": "List complaints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints?page=0&size=10&sortBy=createdAt&direction=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "direction",
+                  "value": "desc"
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "disabled": true
+                },
+                {
+                  "key": "priority",
+                  "value": "in.(high,urgent)",
+                  "disabled": true
+                },
+                {
+                  "key": "departmentId",
+                  "value": "{{departmentId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "studentId",
+                  "value": "{{userId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "cf.hostel_block",
+                  "value": "eq.B",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Filters: `field=value` (eq) or `field=op.value` with ops eq, neq, gt, gte, lt, lte, like, ilike, in, between, is. Combine with `or=(field.op.value,field.op.value)`. Custom fields: `cf.<key>=op.value`. Paging: page, size (max 100), sortBy, direction (asc|desc). Results are scoped by the caller's RLS permissions."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "stats"
+              ]
+            },
+            "description": "Counts by status/priority, scoped to what the caller can see. Needs dashboard read permission."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create complaint (own)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hostel wifi is down\",\n  \"description\": \"No connectivity since Monday\",\n  \"category\": \"infrastructure\",\n  \"priority\": \"high\",\n  \"customFields\": {\n    \"hostel_block\": \"B\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('complaintId', b.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create complaint about a student (teacher)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Repeatedly late to class\",\n  \"description\": \"Late 5 times this month\",\n  \"category\": \"discipline\",\n  \"priority\": \"medium\",\n  \"studentId\": \"{{userId}}\",\n  \"departmentId\": \"{{departmentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "`raisedBy` is set to the caller. Whether the subject student can see the reporter depends on `complaint_reporter` permission, the reporter's role `revealIdentity`, and the complaint's `revealReporter` flag."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('complaintId', b.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create shared complaint about several people",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints"
+              ]
+            },
+            "description": "One complaint naming several people. `studentId` is the main person (department routing uses their department); `subjectIds` lists the others. Everyone named can see the complaint, comment on it and is notified. Requires `complaints:write` with department or all scope; the caller must be able to see every person. The response `subjects` lists everyone the complaint is about.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Damage in the chemistry lab\",\n  \"description\": \"Several students were involved in breaking lab equipment.\",\n  \"category\": \"discipline\",\n  \"priority\": \"high\",\n  \"studentId\": \"{{userId}}\",\n  \"subjectIds\": [\n    \"{{faceMatchedUserId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('complaintId', b.id); pm.test('Lists every subject', function () { pm.expect(b.subjects.length).to.be.at.least(1); }); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get complaint",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patch complaint",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hostel wifi is down (updated)\",\n  \"customFields\": {\n    \"hostel_block\": \"C\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Reporters can edit while `pending`. Staff can also change status, assignedTo, resolution, note and `revealReporter`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"reviewed\",\n  \"resolution\": null,\n  \"note\": \"Looking into it\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "status: pending | reviewed | resolved | rejected. Recorded in history."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolve",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\",\n  \"resolution\": \"Router replaced\",\n  \"note\": \"Fixed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/assignee",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "assignee"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedTo\": \"{{userId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change reporter visibility",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revealReporter\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires complaint_reporter update permission (department/all)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete complaint",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comments",
+          "item": [
+            {
+              "name": "List comments",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/complaints/{{complaintId}}/comments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "complaints",
+                    "{{complaintId}}",
+                    "comments"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Add comment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/complaints/{{complaintId}}/comments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "complaints",
+                    "{{complaintId}}",
+                    "comments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"body\": \"We are working on it\",\n  \"internal\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                      "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('commentId', b.id); } catch (e) {} }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Add internal note (staff only)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/complaints/{{complaintId}}/comments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "complaints",
+                    "{{complaintId}}",
+                    "comments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"body\": \"Raised with IT\",\n  \"internal\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete comment",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/complaints/{{complaintId}}/comments/{{commentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "complaints",
+                    "{{complaintId}}",
+                    "comments",
+                    "{{commentId}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Files (S3 / MinIO)",
+      "item": [
+        {
+          "name": "1. Request upload URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/files/upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "files",
+                "upload-url"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"proof.png\",\n  \"contentType\": \"image/png\",\n  \"sizeBytes\": 4096\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Returns a short-lived presigned PUT URL. `sizeBytes` and `contentType` must match the real file exactly. Allowed: images, video (mp4/webm/mov), audio, pdf, txt, csv, doc(x), xls(x). Max 200 MB, 30 files per complaint."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('fileId', b.fileId); } catch (e) {} }",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('uploadUrl', b.uploadUrl); } catch (e) {} }",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('fileContentType', b.headers['content-type']); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Upload to storage (presigned PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "{{fileContentType}}"
+              }
+            ],
+            "url": {
+              "raw": "{{uploadUrl}}"
+            },
+            "body": {
+              "mode": "file",
+              "file": {}
+            },
+            "description": "Goes straight to MinIO/S3, not the API. Select the file in the Body tab (binary). Send no auth cookie is needed. The file size must equal `sizeBytes` from step 1."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Uploaded', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Confirm upload",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/files/{{fileId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "files",
+                "{{fileId}}",
+                "confirm"
+              ]
+            },
+            "description": "Verifies the object exists with the declared size and content type, then publishes it."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List files",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "files"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get download URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/files/{{fileId}}/download-url?inline=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "files",
+                "{{fileId}}",
+                "download-url"
+              ],
+              "query": [
+                {
+                  "key": "inline",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "Returns a 5 minute presigned GET URL. inline=true opens images/video in the browser."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('downloadUrl', b.url); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download file (presigned GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{downloadUrl}}"
+            }
+          }
+        },
+        {
+          "name": "Delete file",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/files/{{fileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "files",
+                "{{fileId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Files never pass through the API. The API only checks access (RLS) and hands out presigned URLs."
+    },
+    {
+      "name": "Notifications (realtime + push)",
+      "description": "Admin web panel: open {{baseUrl}}/notifications/panel in a browser and sign in with an account that has the integrations permission.",
+      "item": [
+        {
+          "name": "List my notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "unread",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "eq.complaint.status_changed",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Filters: `field=value` or `field=op.value` (eq, neq, gt, gte, lt, lte, like, ilike, in, between, is). Paging: page, size (max 100), sortBy, direction."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('notificationId', b.content[0].id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unread count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "unread-count"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Realtime stream (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/stream",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "stream"
+              ]
+            },
+            "description": "Server-sent events: `event: notification` carries the notification JSON, plus a heartbeat every 15s. Backed by Redis pub/sub so it works across service instances. Cancel manually."
+          }
+        },
+        {
+          "name": "Mark one as read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark all as read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "read-all"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete notification",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register device (FCM token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "devices"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"android\",\n  \"token\": \"PASTE-FCM-REGISTRATION-TOKEN-HERE-0123456789\",\n  \"deviceName\": \"Pixel 8\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "platform: android | ios | web. Call from the mobile app or browser (Firebase Web SDK getToken) after login. Registering an existing token moves it to the current user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { try { const b = pm.response.json(); pm.collectionVariables.set('deviceId', b.id); } catch (e) {} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My devices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "devices"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove device",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/devices/{{deviceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "devices",
+                "{{deviceId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get preferences",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "preferences"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "preferences"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pushEnabled\": true,\n  \"realtimeEnabled\": true,\n  \"mutedTypes\": [\n    \"announcement\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Muted types are still stored in the inbox but produce no realtime message and no push."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send notification to users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\n    \"{{userId}}\"\n  ],\n  \"type\": \"announcement\",\n  \"title\": \"Campus closed\",\n  \"body\": \"Tomorrow is a holiday\",\n  \"data\": {\n    \"route\": \"/news/1\"\n  },\n  \"priority\": \"high\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Targets: userIds, roleIds, departmentIds (any combination, deduplicated). Requires the notifications `write` permission: scope `all` reaches anyone, scope `department` only reaches people who share a department with the sender. Returns the number of recipients. Sender is excluded unless includeSender=true or listed in userIds. Any service can do the same with NotificationPublisher."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send notification to a role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleIds\": [\n    \"{{roleId}}\"\n  ],\n  \"type\": \"announcement\",\n  \"title\": \"Exam schedule\",\n  \"body\": \"Check the portal\",\n  \"priority\": \"normal\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sends to every enabled user holding the role."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send notification to a department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"departmentIds\": [\n    \"{{departmentId}}\"\n  ],\n  \"type\": \"announcement\",\n  \"title\": \"Department meeting\",\n  \"body\": \"3 PM\",\n  \"priority\": \"normal\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sends to every member of the department."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send notification to roles + departments + users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleIds\": [\n    \"{{roleId}}\"\n  ],\n  \"departmentIds\": [\n    \"{{departmentId}}\"\n  ],\n  \"userIds\": [\n    \"{{userId}}\"\n  ],\n  \"type\": \"announcement\",\n  \"title\": \"Combined\",\n  \"includeSender\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Union of all targets."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - integrations",
+          "item": [
+            {
+              "name": "List integrations",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/notifications/admin/integrations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "notifications",
+                    "admin",
+                    "integrations"
+                  ]
+                },
+                "description": "Secrets are never returned, only whether credentials are saved."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Save FCM integration",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/notifications/admin/integrations/fcm",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "notifications",
+                    "admin",
+                    "integrations",
+                    "fcm"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enabled\": true,\n  \"serviceAccountJson\": \"{ ...paste the Firebase service account key JSON... }\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Write-only. The service account JSON is validated and stored AES-GCM encrypted. Omit serviceAccountJson to only toggle `enabled`. Applies within ~30s on every instance. Requires integrations:update:all."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Enable / disable FCM",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/notifications/admin/integrations/fcm",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "notifications",
+                    "admin",
+                    "integrations",
+                    "fcm"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enabled\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Verify credentials & send test push",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/notifications/admin/integrations/fcm/test",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "notifications",
+                    "admin",
+                    "integrations",
+                    "fcm",
+                    "test"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Test notification\",\n  \"body\": \"Push notifications are working.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Verifies the credentials with Google, then pushes to the caller's registered devices (or to `deviceToken` if given)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Remove FCM credentials",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/notifications/admin/integrations/fcm",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "notifications",
+                    "admin",
+                    "integrations",
+                    "fcm"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delivery log",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/notifications/admin/deliveries?size=25",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "notifications",
+                    "admin",
+                    "deliveries"
+                  ],
+                  "query": [
+                    {
+                      "key": "size",
+                      "value": "25"
+                    },
+                    {
+                      "key": "channel",
+                      "value": "fcm",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "failed",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delivery stats (24h)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/notifications/admin/stats",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "notifications",
+                    "admin",
+                    "stats"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Admin web panel (open in browser)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/panel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "panel"
+              ]
+            },
+            "description": "Redirects to the admin web panel (/notifications/panel/index.html). Use a browser, not Postman: sign in with an account that has the integrations permission to manage FCM credentials at runtime, send notifications and view deliveries."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Face Recognition",
+      "description": "Self-hosted ONNX detection (SCRFD) + recognition (ArcFace); enrolled embeddings are matched via pgvector. `faceImageBase64` can be a raw base64 string or a full `data:image/...;base64,...` URL - both are accepted. Enroll/update/delete are scoped (own/department/all) per the caller's `face_recognition` permission; recognize only needs `face_recognition:read`.",
+      "item": [
+        {
+          "name": "Enroll face (self)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/faces/enroll/{{currentUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "enroll",
+                "{{currentUserId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{faceImageBase64}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Enrolls the logged-in user's own face. Works for anyone with `face_recognition:write` at any scope (own/department/all)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enroll face (specific user)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/faces/enroll/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "enroll",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{faceImageBase64}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Enrolls another user's face. Requires `face_recognition:write` scoped to `department` (target shares a department with the caller) or `all`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recognize faces",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/faces/recognize",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "recognize"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{faceImageBase64}}\",\n  \"source\": \"upload\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Detects every face in the photo and matches each against enrolled users the caller can see. Returns the decoded image as a clean base64 PNG with its `width` and `height`, plus a bounding box (in image pixels) and match per face, so clients draw their own overlay. Every scan is written to the face activity log. Requires `face_recognition:read`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) {",
+                  "  try {",
+                  "    const body = pm.response.json();",
+                  "    const match = (body.faces || []).find((f) => f.matched && f.user);",
+                  "    if (match) { pm.collectionVariables.set('faceMatchedUserId', match.user.id); }",
+                  "  } catch (e) {}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recognize faces (live camera frame)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/faces/recognize",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "recognize"
+              ]
+            },
+            "description": "Same as photo recognition but for camera frames: send `source: camera`. The response `image` is empty (the client already shows the video) while `width`, `height` and the boxes are returned. Each person is written to the activity log at most once a minute per viewer. Requires `face_live_recognition:read`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{faceImageBase64}}\",\n  \"source\": \"camera\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List enrollments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faces/enrollments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "enrollments"
+              ]
+            },
+            "description": "Lists everyone currently enrolled (name, email, enrolledAt). Requires `face_recognition:read`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove enrollment (self)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faces/enrollments/{{currentUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "enrollments",
+                "{{currentUserId}}"
+              ]
+            },
+            "description": "Removes the logged-in user's own enrollment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove enrollment (specific user)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faces/enrollments/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "enrollments",
+                "{{userId}}"
+              ]
+            },
+            "description": "Removes another user's enrollment. Requires `face_recognition:write`/`delete` scoped to `department` or `all`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset a self-enrollment lock",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faces/enrollments/{{userId}}/unlock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "enrollments",
+                "{{userId}}",
+                "unlock"
+              ]
+            },
+            "description": "Lets the user enroll or replace their own face again after using up their self-enrollment attempts. Requires `face_enroll_lock:update` for that user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Face activity log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faces/audit?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "event",
+                  "value": "recognize",
+                  "disabled": true
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{userId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Who scanned or enrolled whom, and when. Filter with `event` (recognize, live_recognize, enroll, replace, remove, unlock, bulk_import) and `subjectId`. Requires `face_audit:read`; the scope decides whose activity is visible."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download bulk face import template",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faces/enroll/bulk/template?format=csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "enroll",
+                "bulk",
+                "template"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv"
+                }
+              ]
+            },
+            "description": "Template that maps photo file names to user emails for a ZIP import. `format` is `csv` or `xlsx`. Requires `face_import:read`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bulk import faces from ZIP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faces/enroll/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faces",
+                "enroll",
+                "bulk"
+              ]
+            },
+            "description": "Upload a ZIP containing face photos plus the filled template. Returns 202 with a `processId`; progress is streamed to the uploader in realtime. Requires `face_import:write`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "ZIP archive with photos and the mapping file"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "System Monitor",
+      "description": "Live resource usage of the host, every service, PostgreSQL, Redis and file storage. Requires `system_monitor:read`.",
+      "item": [
+        {
+          "name": "System overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/system/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "system",
+                "overview"
+              ]
+            },
+            "description": "Latest snapshot plus up to 5 minutes of history points (sampled every 2 seconds): host CPU, memory, disks and network, per-service JVM and traffic figures, database, cache and storage."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('Has a latest snapshot', function () { pm.expect(b.latest).to.be.an('object'); }); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "System live stream (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/system/stream",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "system",
+                "stream"
+              ]
+            },
+            "description": "Server-sent events: one `overview` event, then a `snapshot` event every 2 seconds and a `heartbeat` every 15 seconds. The stream ends if the caller loses `system_monitor:read`. Postman shows events as they arrive."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', function () { pm.expect([200, 201, 202, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "currentUserId",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "roleId",
+      "value": ""
+    },
+    {
+      "key": "permissionId",
+      "value": ""
+    },
+    {
+      "key": "departmentId",
+      "value": ""
+    },
+    {
+      "key": "customFieldId",
+      "value": ""
+    },
+    {
+      "key": "complaintId",
+      "value": ""
+    },
+    {
+      "key": "commentId",
+      "value": ""
+    },
+    {
+      "key": "fileId",
+      "value": ""
+    },
+    {
+      "key": "uploadUrl",
+      "value": ""
+    },
+    {
+      "key": "downloadUrl",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "fileContentType",
+      "value": "image/png"
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "deviceId",
+      "value": ""
+    },
+    {
+      "key": "faceImageBase64",
+      "value": ""
+    },
+    {
+      "key": "faceMatchedUserId",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.variables.get('baseUrl')) { pm.variables.set('baseUrl', 'http://localhost:7050'); }"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// When the access token expired, refresh it once and ask the user to re-send.",
+          "if (pm.response.code === 401 && !pm.request.url.getPath().startsWith('/auth/')) {",
+          "  pm.sendRequest({ url: pm.variables.get('baseUrl') + '/auth/refresh', method: 'POST' }, function (err, res) {",
+          "    if (!err && res.code === 200) { console.log('Access token refreshed - send the request again.'); }",
+          "    else { console.log('Session expired - run Auth / Login.'); }",
+          "  });",
+          "}"
+        ]
+      }
+    }
+  ]
+}

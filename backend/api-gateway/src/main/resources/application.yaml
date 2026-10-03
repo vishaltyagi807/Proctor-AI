@@ -1,0 +1,87 @@
+server:
+  port: ${GATEWAY_SERVER_PORT:7050}
+
+spring:
+  application:
+    name: API-GATEWAY
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  cloud:
+    loadbalancer:
+      cache:
+        ttl: 5s
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: 5000
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origins: ${APP_ALLOWED_ORIGINS}
+                allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+                allowed-headers: Content-Type,Authorization,Accept
+                allow-credentials: true
+                max-age: 3600
+          routes:
+            - id: auth-service
+              uri: lb://AUTH-SERVICE
+              predicates:
+                - Path=/auth/**
+            - id: user-service
+              uri: lb://USER-SERVICE
+              predicates:
+                - Path=/users/**
+            - id: department-service
+              uri: lb://DEPARTMENT-SERVICE
+              predicates:
+                - Path=/departments/**
+            - id: role-service
+              uri: lb://ROLE-SERVICE
+              predicates:
+                - Path=/roles/**
+            - id: storage-service
+              uri: lb://STORAGE-SERVICE
+              predicates:
+                - Path=/complaints/*/files/**
+            - id: custom-field-service
+              uri: lb://CUSTOM-FIELD-SERVICE
+              predicates:
+                - Path=/custom-fields/**
+            - id: notification-service
+              uri: lb://NOTIFICATION-SERVICE
+              predicates:
+                - Path=/notifications/**
+            - id: complaint-service
+              uri: lb://COMPLAINT-SERVICE
+              predicates:
+                - Path=/complaints/**
+            - id: face-service
+              uri: lb://FACE-SERVICE
+              predicates:
+                - Path=/faces/**
+            - id: monitor-service
+              uri: lb://MONITOR-SERVICE
+              predicates:
+                - Path=/system/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+eureka:
+  client:
+    registry-fetch-interval-seconds: 5
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10

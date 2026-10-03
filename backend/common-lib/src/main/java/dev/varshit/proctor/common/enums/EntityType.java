@@ -1,0 +1,32 @@
+package dev.varshit.proctor.common.enums;
+
+public enum EntityType {
+    dashboard,
+    users,
+    user_roles,
+    roles,
+    role_permission,
+    permissions,
+    departments,
+    department_users,
+    complaints,
+    complaint_comments,
+    complaint_files,
+    complaint_history,
+    complaint_reporter,
+    custom_fields,
+    notifications,
+    notification_devices,
+    integrations,
+    face_recognition,
+    face_live_recognition,
+    face_match_details,
+    face_enrollments,
+    face_enroll_lock,
+    face_import,
+    face_audit,
+    same_role_peers,
+    parallel_role_peers,
+    senior_users,
+    system_monitor
+}

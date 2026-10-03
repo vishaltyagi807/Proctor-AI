@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Notification Admin</title>
+    <style>
+        :root { --bg:#f5f6f8; --card:#fff; --ink:#1c2230; --muted:#6b7385; --line:#e3e6ec; --accent:#2f5fe3; --ok:#1c8a4f; --bad:#c0392b; --warn:#b7791f; }
+        @media (prefers-color-scheme: dark) { :root { --bg:#12151c; --card:#1b202b; --ink:#e8ebf2; --muted:#98a1b3; --line:#2a3140; --accent:#6f93ff; --ok:#43c583; --bad:#ff7a6b; --warn:#e5b45a; } }
+        * { box-sizing: border-box; }
+        body { margin:0; font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+        header { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:var(--card); border-bottom:1px solid var(--line); gap:12px; flex-wrap:wrap; }
+        h1 { font-size:18px; margin:0; }
+        main { max-width:1100px; margin:0 auto; padding:20px 16px 60px; display:grid; gap:16px; }
+        .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+        .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+        .card h2 { font-size:15px; margin:0 0 12px; }
+        .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
+        .stat { border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+        .stat b { display:block; font-size:22px; }
+        .stat span { color:var(--muted); font-size:12px; }
+        label { display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; }
+        input[type=text], input[type=password], input[type=email], textarea, select { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); font:inherit; }
+        textarea { min-height:120px; font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+        button { padding:8px 14px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--ink); font:inherit; cursor:pointer; }
+        button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+        button.danger { color:var(--bad); }
+        button:disabled { opacity:.5; cursor:not-allowed; }
+        .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+        .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--line); }
+        .pill.ok { color:var(--ok); } .pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); }
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-word; }
+        th { color:var(--muted); font-weight:500; }
+        .msg { margin-top:10px; font-size:13px; min-height:18px; }
+        .msg.ok { color:var(--ok); } .msg.bad { color:var(--bad); }
+        .muted { color:var(--muted); font-size:13px; }
+        ul.live { list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; font-size:13px; }
+        ul.live li { padding:6px 0; border-bottom:1px solid var(--line); }
+        .hidden { display:none !important; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Notification admin</h1>
+    <div id="session" class="muted">Checking session…</div>
+</header>
+<main>
+    <section id="login" class="card hidden">
+        <h2>Sign in</h2>
+        <form id="loginForm">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username" required>
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" required>
+            <div class="row"><button class="primary" type="submit">Sign in</button></div>
+            <div id="loginMsg" class="msg"></div>
+        </form>
+    </section>
+
+    <div id="app" class="hidden">
+        <section class="card">
+            <h2>Last 24 hours</h2>
+            <div id="stats" class="stats"></div>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2>Firebase Cloud Messaging (mobile &amp; web push)</h2>
+                <div id="fcmStatus" class="muted">Loading…</div>
+                <label for="fcmEnabled">Push delivery</label>
+                <select id="fcmEnabled">
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
+                </select>
+                <label for="fcmJson">Service account JSON (write-only, stored encrypted)</label>
+                <textarea id="fcmJson" placeholder='Paste the Firebase service account key JSON here. Leave empty to keep the saved key.' spellcheck="false" autocomplete="off"></textarea>
+                <div class="row">
+                    <button id="fcmSave" class="primary">Save</button>
+                    <button id="fcmTest">Verify &amp; send test push</button>
+                    <button id="fcmClear" class="danger">Remove credentials</button>
+                </div>
+                <div id="fcmMsg" class="msg"></div>
+                <p class="muted">Test pushes go to the devices registered by the signed-in admin. Firebase Console → Project settings → Service accounts → Generate new private key.</p>
+            </section>
+
+            <section class="card">
+                <h2>Send a notification</h2>
+                <label for="sendRoles">To roles (hold Ctrl/Cmd to pick several)</label>
+                <select id="sendRoles" multiple size="4"></select>
+                <label for="sendDepartments">To departments</label>
+                <select id="sendDepartments" multiple size="4"></select>
+                <label for="sendUsers">Also to user ids (comma separated). Leave everything empty to send to yourself.</label>
+                <input id="sendUsers" type="text" placeholder="uuid, uuid">
+                <label for="sendType">Type</label>
+                <input id="sendType" type="text" value="admin.message">
+                <label for="sendTitle">Title</label>
+                <input id="sendTitle" type="text" value="Hello from the admin panel">
+                <label for="sendBody">Body</label>
+                <input id="sendBody" type="text" value="This is a test notification.">
+                <label for="sendPriority">Priority</label>
+                <select id="sendPriority"><option>normal</option><option>high</option><option>low</option></select>
+                <div class="row"><button id="sendBtn" class="primary">Send</button></div>
+                <div id="sendMsg" class="msg"></div>
+            </section>
+        </div>
+
+        <div class="grid">
+            <section class="card">
+                <h2>Live stream (your account)</h2>
+                <div class="row"><button id="liveBtn">Connect</button><span id="liveState" class="pill">disconnected</span></div>
+                <ul id="live" class="live"></ul>
+            </section>
+            <section class="card">
+                <h2>Recent deliveries</h2>
+                <div class="row"><button id="refreshDeliveries">Refresh</button></div>
+                <table>
+                    <thead><tr><th>Time</th><th>Channel</th><th>Status</th><th>Detail</th></tr></thead>
+                    <tbody id="deliveries"></tbody>
+                </table>
+            </section>
+        </div>
+    </div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
