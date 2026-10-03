@@ -1,0 +1,76 @@
+server:
+  port: ${FACE_SERVER_PORT:7059}
+
+spring:
+  application:
+    name: FACE-SERVICE
+  webflux:
+    multipart:
+      max-in-memory-size: 150MB
+      max-disk-usage-per-part: 300MB
+  http:
+    codecs:
+      max-in-memory-size: 150MB
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  r2dbc:
+    url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/proctor}
+    username: ${APP_USER_NAME}
+    password: ${APP_USER_PASSWORD}
+    pool:
+      initial-size: 2
+      max-size: 10
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/proctor}
+    username: ${APP_USER_NAME}
+    password: ${APP_USER_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+  ai:
+    vectorstore:
+      type: pgvector
+      pgvector:
+        table-name: face_embeddings
+        dimensions: ${FACE_EMBEDDING_DIMENSIONS:512}
+        distance-type: COSINE_DISTANCE
+        index-type: HNSW
+        initialize-schema: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER}
+    access-token-expires-in: ${JWT_ACCESS_EXPIRE_IN_SEC:900}
+    refresh-token-expires-in: ${JWT_REFRESH_EXPIRE_IN_SEC:2592000}
+  security:
+    allowed-origins: ${APP_ALLOWED_ORIGINS}
+  face:
+    detection-model-path: ${FACE_DETECTION_MODEL_PATH:./models/det_10g.onnx}
+    embedding-model-path: ${FACE_EMBEDDING_MODEL_PATH:./models/w600k_r50.onnx}
+    detection-input-size: ${FACE_DETECTION_INPUT_SIZE:640}
+    detection-score-threshold: ${FACE_DETECTION_SCORE_THRESHOLD:0.5}
+    detection-nms-threshold: ${FACE_DETECTION_NMS_THRESHOLD:0.4}
+    match-threshold: ${FACE_MATCH_THRESHOLD:0.75}
+    max-image-bytes: ${FACE_MAX_IMAGE_BYTES:8388608}
+    self-enroll-limit: ${FACE_SELF_ENROLL_LIMIT:1}
+    max-zip-bytes: ${FACE_MAX_ZIP_BYTES:262144000}
+
+app.storage:
+  dir: ${APP_STORAGE_DIR:./storage}
+  max-bytes: ${APP_STORAGE_MAX_BYTES:262144000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true

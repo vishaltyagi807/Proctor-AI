@@ -1,0 +1,54 @@
+server:
+  port: ${STORAGE_SERVER_PORT:7056}
+
+spring:
+  application:
+    name: STORAGE-SERVICE
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  r2dbc:
+    url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/proctor}
+    username: ${APP_USER_NAME}
+    password: ${APP_USER_PASSWORD}
+    pool:
+      initial-size: 3
+      max-size: 15
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER}
+    access-token-expires-in: ${JWT_ACCESS_EXPIRE_IN_SEC:900}
+    refresh-token-expires-in: ${JWT_REFRESH_EXPIRE_IN_SEC:2592000}
+  security:
+    allowed-origins: ${APP_ALLOWED_ORIGINS}
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    public-endpoint: ${S3_PUBLIC_ENDPOINT:http://localhost:9000}
+    region: ${S3_REGION:us-east-1}
+    bucket: ${S3_BUCKET:proctor-files}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
+    upload-url-ttl: 10m
+    download-url-ttl: 5m
+  storage-limits:
+    max-file-bytes: ${STORAGE_MAX_FILE_BYTES:209715200}
+    max-files-per-complaint: 30
+    max-bytes-per-complaint: ${STORAGE_MAX_COMPLAINT_BYTES:1073741824}
+    pending-ttl: 1h
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
