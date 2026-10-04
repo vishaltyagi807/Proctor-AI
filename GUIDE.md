@@ -417,7 +417,13 @@ When it finishes it prints:
 | Service registry | http://localhost:8761 (user `proctor-discovery`, password is `DISCOVERY_PASSWORD` in `backend/.env`) |
 | MinIO console | http://localhost:9201 (`MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` in `backend/.env`) |
 
-Sign in with the seeded administrator `admin@college.com`. Its password is in `backend/init/07_seed.sql`.
+Sign in with the default administrator account:
+
+| Email | Password |
+|---|---|
+| `admin@college.com` | `admin123` |
+
+`admin123` is the public development default from `backend/init/07_seed.sql`. Change it in your profile after signing in on any machine others can reach. The published-image deployment (section 3) replaces it with a random password automatically.
 
 ### 4.2 Everyday workflow
 
