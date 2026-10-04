@@ -21,7 +21,12 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
-    server: { proxy },
+    server: {
+      proxy,
+      watch: {
+        ignored: ["**/src-tauri/**"],
+      },
+    },
     preview: { proxy },
   }
 })
