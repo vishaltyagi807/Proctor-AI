@@ -427,7 +427,7 @@ start_dev() {
         "$discovery_port" "$(env_value DISCOVERY_USERNAME "$DEV_ENV" proctor-discovery)"
     printf '  MinIO console     http://localhost:%s\n' "$console_port"
     if [ -n "$admin" ]; then
-        printf '  Sign in as        %s (password is in backend/init/07_seed.sql)\n' "$admin"
+        printf '  Sign in as        %s / admin123\n' "$admin"
     fi
     printf '\n  Frontend edits reload instantly. After backend changes run ./setup.sh again.\n'
 }
@@ -1038,7 +1038,7 @@ print_prod_summary() {
     printf '                    sign in as %s, the password is DISCOVERY_PASSWORD in backend/.env.production\n' "$user"
     printf '  MinIO console     http://localhost:9201 through the same SSH tunnel\n'
     if [ -n "$admin" ]; then
-        printf '  Sign in as        %s (password is in backend/init/07_seed.sql, change it after the first login)\n' "$admin"
+        printf '  Sign in as        %s / admin123 (change this password right after the first login)\n' "$admin"
     fi
     printf '  Settings          backend/.env.production\n'
     print_dns_records

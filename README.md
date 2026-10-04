@@ -24,10 +24,42 @@ Face recognition · Fine-grained RBAC with row-level security · Real-time notif
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
+<br />
+![Web](https://img.shields.io/badge/Web-any_modern_browser-4285F4?style=flat-square&logo=googlechrome&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-10_|_11-0078D4?style=flat-square&logo=windows11&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-13+-000000?style=flat-square&logo=apple&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-deb_|_rpm_|_AppImage-FCC624?style=flat-square&logo=linux&logoColor=black)
+![Android](https://img.shields.io/badge/Android-8.0+-3DDC84?style=flat-square&logo=android&logoColor=white)
+![iOS](https://img.shields.io/badge/iOS-16.4+-000000?style=flat-square&logo=ios&logoColor=white)
 
-[Get Started](#-get-started) · [Features](#-features) · [Production](#-production-deployment) · [Apps](#-desktop-and-mobile-apps) · [Architecture](#%EF%B8%8F-architecture) · [Configuration](#%EF%B8%8F-configuration) · [API](#-api-overview) · [Full Guide](GUIDE.md)
+[Platforms](#-supported-platforms) · [Get Started](#-get-started) · [Features](#-features) · [Production](#-production-deployment) · [Apps](#-desktop-and-mobile-apps) · [Architecture](#%EF%B8%8F-architecture) · [Configuration](#%EF%B8%8F-configuration) · [API](#-api-overview) · [Full Guide](GUIDE.md)
 
 </div>
+
+---
+
+## 🌐 Supported Platforms
+
+ProctorAI runs everywhere your users are. The web app and the native apps share one codebase, with the same features and the same server.
+
+| Platform | Minimum version | Architectures | Package | How users get it |
+|---|---|---|---|---|
+| 🌐 **Web** | Chrome / Edge 111+, Firefox 128+, Safari 16.4+ | Any | Browser, with **Add to Home Screen** | Open the server's web address |
+| 🪟 **Windows** | Windows 10 and 11 | x64 | `.exe` installer, `.msi` | Download and run the installer |
+| 🍎 **macOS** | macOS 13 Ventura | Apple Silicon and Intel (universal) | `.dmg`, `.app` | Open the disk image and drag to Applications |
+| 🐧 **Linux** | Ubuntu 22.04+, Debian 12+, Fedora 36+, or any distribution with WebKitGTK 4.1 | x64 | `.deb`, `.rpm`, `.AppImage` | Install the package for the distribution, or run the AppImage |
+| 🤖 **Android** | Android 8.0 (API 26) | arm64, armv7, x86, x86_64 | `.apk`, `.aab` | Install the APK, or publish the AAB on Google Play |
+| 📱 **iOS** | iOS 16.4 | arm64 | `.ipa` | TestFlight or the App Store |
+
+**Native app extras** (Windows, macOS, Linux, Android, iOS):
+
+- System notifications while the app is in the background
+- `proctorai://` deep links. On desktop, a second launch focuses the open window.
+- Native save dialogs, and the camera for face recognition
+- Layouts that respect notches, rounded corners and system bars on phones
+- A server address chosen at sign-in, or built into the app
+
+**Server:** any 64-bit Linux server (x86_64) with Docker 25+ and Compose 2.21+. Developers can also run the full stack on macOS and Windows with Docker Desktop.
 
 ---
 
@@ -64,7 +96,15 @@ The first run takes a few minutes. Setup creates `backend/.env`, downloads the f
 | 🧭 Service registry | http://localhost:8761 (user `proctor-discovery`, password `DISCOVERY_PASSWORD` in `backend/.env`) |
 | 🗄️ MinIO console | http://localhost:9201 |
 
-Sign in as `admin@college.com`. The development password is in `backend/init/07_seed.sql`. Frontend edits reload instantly. After backend changes, run `./setup.sh` again. To run your own build in production, use `./setup.sh prod` (see [Production Deployment](#-production-deployment)).
+Sign in with the default administrator account:
+
+| Email | Password |
+|---|---|
+| `admin@college.com` | `admin123` |
+
+> ⚠️ `admin123` is the public development default. Change it after signing in on any machine others can reach. Deployments from the published images (path 1) replace it with a random password automatically.
+
+Frontend edits reload instantly. After backend changes, run `./setup.sh` again. To run your own build in production, use `./setup.sh prod` (see [Production Deployment](#-production-deployment)).
 
 ### 📱 3. Build the desktop and mobile apps
 
@@ -202,15 +242,15 @@ Check propagation with `./setup.sh dns`, then run setup again (`./setup.sh` in `
 
 ## 📱 Desktop and Mobile Apps
 
-The same React app ships as native apps through **Tauri 2**:
+The same React app ships as native apps through **Tauri 2**. See [Supported Platforms](#-supported-platforms) for versions and packages. Each app is built on this kind of machine:
 
-| Platform | Output | Build on |
-|---|---|---|
-| 🪟 Windows | `.msi`, `.exe` installer | Windows |
-| 🍎 macOS | `.app`, `.dmg` (Intel and Apple Silicon) | macOS |
-| 🐧 Linux | `.deb`, `.rpm`, `.AppImage` | Linux |
-| 🤖 Android | `.apk`, `.aab` | Linux, macOS or Windows |
-| 📱 iOS | `.ipa` | macOS with Xcode |
+| App | Build on |
+|---|---|
+| 🪟 Windows | Windows |
+| 🍎 macOS | macOS |
+| 🐧 Linux | Linux |
+| 🤖 Android | Linux, macOS or Windows |
+| 📱 iOS | macOS with Xcode |
 
 The apps connect to any ProctorAI server. Build one in with `VITE_SERVER_URL=https://app.example.com`, or let users enter the address at sign-in. They support live updates, system notifications, the camera for face recognition, native downloads, `proctorai://` deep links and safe areas on phones. Setup already allows the app origins on the server.
 
