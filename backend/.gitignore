@@ -73,3 +73,5 @@ logs/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+edge/Caddyfile
+edge/Caddyfile.tmp

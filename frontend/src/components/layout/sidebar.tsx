@@ -5,6 +5,7 @@ import { NAV } from "./nav";
 import { useSession } from "@/components/providers/session";
 import { Avatar } from "@/components/ui/misc";
 import { HrefLink } from "@/components/ui/href-link";
+import { Credits } from "./credits";
 import { cn } from "@/lib/utils";
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
@@ -67,6 +68,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         </div>
       </div>
+      <Credits className="px-6 pb-4 text-sidebar-foreground/35" />
     </div>
   );
 }

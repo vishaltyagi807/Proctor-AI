@@ -10,6 +10,7 @@ import { EASE } from "@/components/ui/motion";
 import { ApiError } from "@/lib/api";
 import { signIn } from "@/lib/session";
 import { Hint } from "@/components/ui/hint";
+import { Credits } from "@/components/layout/credits";
 
 const features = [
   { icon: Workflow, title: "Guided workflows", text: "Every complaint moves through clear, auditable stages." },
@@ -85,7 +86,7 @@ export function LoginView({ next, expired }: { next: string; expired: boolean })
         </p>
       </div>
 
-      <div className="relative flex items-center justify-center p-6 sm:p-12">
+      <div className="relative flex flex-col items-center justify-center p-6 pb-16 sm:p-12 sm:pb-16">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_50%_0%,color-mix(in_oklch,var(--brand)_14%,transparent),transparent)]" />
         <motion.div initial={{ opacity: 0, y: 28, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.6, ease: EASE }} className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
@@ -136,6 +137,7 @@ export function LoginView({ next, expired }: { next: string; expired: boolean })
           </form>
           <p className="mt-8 text-center text-xs text-muted-foreground">Trouble signing in? Contact your administrator.</p>
         </motion.div>
+        <Credits className="absolute inset-x-0 bottom-6 px-6 text-center text-muted-foreground/70 lg:bottom-12" />
       </div>
     </div>
   );

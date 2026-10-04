@@ -14,3 +14,4 @@ init
 docker-compose*.yaml
 Dockerfile
 .dockerignore
+edge

@@ -117,6 +117,7 @@ Once it's running:
 ./setup.sh              # set up and start the development stack (default)
 ./setup.sh prod         # set up and start the production stack
 ./setup.sh env          # only create backend/.env with random secrets (add --prod for .env.production)
+./setup.sh dns         # show the DNS records the production domains need, and whether they are in place
 ./setup.sh status       # show every container and its health
 ./setup.sh logs api-gateway   # follow logs for a service
 ./setup.sh stop         # stop containers, keep data
@@ -128,6 +129,56 @@ Once it's running:
 Add `--prod` to `env`, `stop`, `down`, `purge`, `status`, or `logs` to act on the production stack.
 
 > 💡 In development, frontend edits hot-reload instantly. After backend changes, run `./setup.sh` again.
+
+---
+
+## 🌍 Production Deployment
+
+Run this on a Linux server with Docker installed and a public IP address:
+
+```bash
+./setup.sh prod
+```
+
+Setup asks for three domains and a contact email, then configures everything else on its own:
+
+| Prompt | Example | Serves |
+|---|---|---|
+| Web app domain | `app.example.com` | The web app and its API |
+| File storage domain | `files.example.com` | Uploads and downloads (MinIO behind presigned URLs) |
+| Service registry domain | `registry.example.com` | The Eureka dashboard, behind a password |
+| Certificate email | `ops@example.com` | Let's Encrypt expiry notices |
+
+**What happens automatically**
+
+1. The server's public IP address is detected.
+2. The domains are checked against public DNS.
+3. A [Caddy](https://caddyserver.com) edge proxy is configured. It obtains and renews TLS certificates from Let's Encrypt (with ZeroSSL as a fallback), redirects HTTP to HTTPS, sends HSTS headers and serves HTTP/3.
+4. The allowed CORS origins, secure cookies, presigned file URLs and MinIO CORS are set to match, and updated again on every run (see below).
+5. The stack is built and started, and setup waits until every certificate is active.
+
+**Add these DNS records** (setup prints them with your real IP address and the status of each one):
+
+| Type | Name | Value |
+|---|---|---|
+| A | `app.example.com` | your server's public IPv4 address |
+| A | `files.example.com` | your server's public IPv4 address |
+| A | `registry.example.com` | your server's public IPv4 address |
+| CAA (optional) | `example.com` | `0 issue "letsencrypt.org"` |
+
+Also allow inbound **TCP 80**, **TCP 443** and **UDP 443** in your firewall or cloud security group.
+
+**Before DNS is ready**, the app runs from the IP address so you can start using it right away:
+
+| Part | Before DNS | After DNS |
+|---|---|---|
+| Web app | `http://<server-ip>` | `https://app.example.com` |
+| File storage | `http://<server-ip>:9200` | `https://files.example.com` |
+| Service registry | SSH tunnel to `http://localhost:8761` | `https://registry.example.com` |
+
+Check propagation with `./setup.sh dns`, then run `./setup.sh prod` again to switch to HTTPS. On reruns, press Enter to keep the saved domains. You can also pass `--yes` to skip the prompts, or set `APP_DOMAIN`, `FILES_DOMAIN`, `REGISTRY_DOMAIN`, `ACME_EMAIL` and `PUBLIC_IP` for unattended installs.
+
+> 🔒 The IP stage is plain HTTP and meant only for the time until DNS is set. The service registry and the MinIO console are never exposed over plain HTTP. Reach them with `ssh -L 8761:127.0.0.1:8761 -L 9201:127.0.0.1:9201 <user>@<server-ip>`.
 
 ---
 
@@ -198,9 +249,17 @@ See `backend/.env.example` for the full list. The most important variables are:
 | `FACE_MATCH_THRESHOLD` | Cosine similarity threshold for a face match |
 | `FACE_DETECTION_SCORE_THRESHOLD` | Minimum face detection confidence |
 
-Host ports can be overridden with `FRONTEND_PORT`, `GATEWAY_SERVER_PORT`, and `DISCOVERY_SERVER_PORT` in development, and with `HTTP_PORT` in production.
+**Allowed origins are managed by setup.** Every `./setup.sh` run rebuilds `APP_ALLOWED_ORIGINS` (and, in production, `MINIO_CORS_ALLOW_ORIGIN`) from what is actually served:
 
-> ⚠️ **Before going live**, set `APP_ALLOWED_ORIGINS` to your site URL and `S3_PUBLIC_ENDPOINT` to a public file URL in `backend/.env.production`.
+| Stack | Managed origins |
+|---|---|
+| Development | `http://localhost:<FRONTEND_PORT>`, `http://127.0.0.1:<FRONTEND_PORT>` |
+| Production, before DNS | `http://<server-ip>` |
+| Production, after DNS | `https://<app domain>` |
+
+To allow another site, add it to `APP_EXTRA_ORIGINS` (comma separated, for example `https://admin.example.com`) instead of editing `APP_ALLOWED_ORIGINS`. Setup validates these origins and merges them in on every run. Wildcards and non-HTTP schemes are rejected. The file storage and service registry endpoints, including their IP and localhost ports and the MinIO console, are refused on purpose. The storage domain serves user uploads, so allowing it would let an uploaded file call the API with a signed-in user's cookies. Origins that were added to `APP_ALLOWED_ORIGINS` by hand earlier are moved into `APP_EXTRA_ORIGINS` automatically on the first run.
+
+Host ports can be overridden with `FRONTEND_PORT`, `GATEWAY_SERVER_PORT`, and `DISCOVERY_SERVER_PORT` in development. In production, `./setup.sh prod` sets the domains, origins, cookies and file URLs for you (see [Production Deployment](#-production-deployment)).
 
 ### Database
 
