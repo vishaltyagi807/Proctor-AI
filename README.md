@@ -90,6 +90,8 @@ See [Desktop and Mobile Apps](#-desktop-and-mobile-apps) and section 6 of the [g
 | `./setup.sh stop` / `down` | `./setup.sh stop` / `down [--prod]` | Stop or remove containers, keeping data |
 | `./setup.sh purge` | `./setup.sh purge [--prod]` | Delete everything, including data (asks to confirm) |
 
+To free disk space, `./clean-up.sh` deletes the build output (`build/`, `.gradle/`, `src-tauri/target`), `node_modules` and the backend `.env` files. Run `./clean-up.sh --dry-run` first to see the list.
+
 ---
 
 ## ✨ Features
@@ -244,6 +246,7 @@ ProctorAI/
 ├── GUIDE.md                     # full setup, deployment and app build guide
 ├── setup.sh                     # build-from-source setup & lifecycle script
 ├── native-doctor.sh             # checks desktop and mobile build prerequisites
+├── clean-up.sh                  # deletes build output, node_modules and generated .env files
 ├── docker/                      # deploy from published Docker Hub images
 │   ├── setup.sh
 │   ├── docker-compose.yaml

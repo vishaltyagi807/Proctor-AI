@@ -836,6 +836,16 @@ This regenerates every desktop, Android, iOS and web icon. Run it again after `t
 | `./setup.sh stop` / `down` | Stop or remove the containers, keep all data |
 | `./setup.sh purge [--yes]` | Remove the containers and all data |
 
+### `clean-up.sh`
+
+| Command | Does |
+|---|---|
+| `./clean-up.sh --dry-run` | List what would be deleted, with sizes |
+| `./clean-up.sh` | Delete every Gradle `build/` and `.gradle/` folder, `backend/.env`, `backend/.env.production`, `frontend/node_modules` and `frontend/src-tauri/target` (asks to confirm) |
+| `./clean-up.sh --yes` | The same, without asking |
+
+Deleting the `.env` files removes the secrets that existing database volumes were created with. Run `./setup.sh purge` (and `./setup.sh purge --prod`) first for a completely fresh start, or keep a copy of those files.
+
 ### `native-doctor.sh`
 
 | Command | Does |
