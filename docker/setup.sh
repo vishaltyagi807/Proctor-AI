@@ -2,15 +2,13 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-BACKEND_DIR="$ROOT_DIR/backend"
-DEV_ENV="$BACKEND_DIR/.env"
-PROD_ENV="$BACKEND_DIR/.env.production"
-MODELS_DIR="$BACKEND_DIR/face-service/models"
-FACE_DETECTOR_URL="https://huggingface.co/vishaltyagi807/face-detector/resolve/main/face-detector.onnx"
-FACE_EMBEDDER_URL="https://huggingface.co/vishaltyagi807/face-detector/resolve/main/face-embedder.onnx"
-FACE_DETECTOR_SHA256=5838f7fe053675b1c7a08b633df49e7af5495cee0493c7dcf6697200b85b5b91
-FACE_EMBEDDER_SHA256=4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43
-SEED_FILE="$BACKEND_DIR/init/07_seed.sql"
+ENV_FILE="$ROOT_DIR/.env"
+COMPOSE_FILE="$ROOT_DIR/docker-compose.yaml"
+DEFAULT_REPOSITORY="vishaltyagi807/proctor-ai"
+DEFAULT_VERSION="1.0.0"
+ADMIN_EMAIL="admin@college.com"
+SEEDED_PASSWORD="admin123"
+NATIVE_ORIGINS="tauri://localhost http://tauri.localhost https://tauri.localhost"
 
 if [ -t 1 ]; then
     BOLD=$(printf '\033[1m')
@@ -32,36 +30,31 @@ warn() { printf '%s[warn]%s %s\n' "$YELLOW" "$RESET" "$1" >&2; }
 fail() { printf '%s[error] %s%s\n' "$RED" "$1" "$RESET" >&2; exit 1; }
 
 usage() {
-    cat <<EOF
-Usage: ./setup.sh [command] [--prod] [service]
+    cat <<USAGE
+Usage: ./setup.sh [command] [options]
 
-Sets up and runs the complete ProctorAI system (backend + frontend) with Docker.
-Only Docker is required on this machine.
+Runs the ProctorAI production stack from the prebuilt images on Docker Hub.
+Only Docker is required. Nothing is built on this machine.
 
 Commands:
-  dev       Set up and start the development stack (default)
-  prod      Set up and start the production stack
-  env       Only create the env file with new random secrets, then exit
-  dns       Show the DNS records the production domains need and whether they are in place
-  stop      Stop the containers and keep all data
-  down      Remove the containers and keep all data
-  purge     Remove the containers and all volumes, deleting every piece of data
-  status    Show every container and its health
-  logs      Follow logs, for example: ./setup.sh logs api-gateway
-  help      Show this message
+  start             Configure and start the stack (default)
+  update [version]  Pull the images for a version (default: the current one) and restart
+  env               Only create .env with new random secrets, then exit
+  dns               Show the DNS records the domains need and whether they are in place
+  status            Show every container and its health
+  logs [service]    Follow logs, for example: ./setup.sh logs edge
+  stop              Stop the containers and keep all data
+  down              Remove the containers and keep all data
+  purge             Remove the containers and all volumes, deleting every piece of data
+  help              Show this message
 
-Add --prod to env, stop, down, purge, status or logs to act on the production stack.
-Add --yes to purge to skip the confirmation prompt, or to prod to keep the saved domains without asking.
-
-The production stack asks for a web app, file storage and service registry domain, gets TLS
-certificates for them automatically, and serves the web app from the server IP address until
-their DNS records point to this server.
+Options:
+  --yes             Keep the saved domains without asking, or skip the purge confirmation
 
 Environment overrides:
-  FRONTEND_PORT, GATEWAY_SERVER_PORT, DISCOVERY_SERVER_PORT   development host ports
-  APP_DOMAIN, FILES_DOMAIN, REGISTRY_DOMAIN, ACME_EMAIL         production domains and certificate email
-  PUBLIC_IP                                                    production public IPv4 address
-EOF
+  APP_DOMAIN, FILES_DOMAIN, REGISTRY_DOMAIN, ACME_EMAIL   domains and certificate email
+  PUBLIC_IP                                              public IPv4 address of this server
+USAGE
 }
 
 detect_os() {
@@ -114,81 +107,6 @@ random_secret() {
     printf '%s' "$secret"
 }
 
-write_env() {
-    file=$1
-    mode=$2
-    if [ "$mode" = prod ]; then
-        site=${PUBLIC_URL:-http://localhost}
-        files_url=${S3_PUBLIC_URL:-http://localhost:9200}
-        cookie_secure=true
-    else
-        site=http://localhost:5173
-        files_url=http://localhost:9200
-        cookie_secure=false
-    fi
-    (
-        umask 077
-        cat >"$file" <<EOF
-POSTGRES_DB=proctor
-POSTGRES_USER=proctor_admin
-POSTGRES_PASSWORD=$(random_secret 32)
-
-AUTHENTICATOR_USER_NAME=authenticator
-AUTHENTICATOR_USER_PASSWORD=$(random_secret 32)
-APP_USER_NAME=proctor
-APP_USER_PASSWORD=$(random_secret 32)
-
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/proctor
-R2DBC_URL=r2dbc:postgresql://localhost:5433/proctor
-
-JWT_SECRET=$(random_secret 64)
-JWT_ISSUER=proctor.local
-JWT_ACCESS_EXPIRE_IN_SEC=900
-JWT_REFRESH_EXPIRE_IN_SEC=2592000
-
-APP_ALLOWED_ORIGINS=$site
-APP_COOKIE_SECURE=$cookie_secure
-APP_STORAGE_DIR=./storage
-
-DISCOVERY_SERVER_PORT=8761
-DISCOVERY_SERVER_REFRESH_INTERVAL=2
-DISCOVERY_USERNAME=proctor-discovery
-DISCOVERY_PASSWORD=$(random_secret 48)
-
-MINIO_ROOT_USER=proctorminio
-MINIO_ROOT_PASSWORD=$(random_secret 32)
-S3_ACCESS_KEY=proctor-app
-S3_SECRET_KEY=$(random_secret 40)
-S3_BUCKET=proctor-files
-S3_ENDPOINT=http://localhost:9200
-S3_PUBLIC_ENDPOINT=$files_url
-
-POSTGRES_PORT=5433
-S3_PORT=9200
-S3_CONSOLE_PORT=9201
-
-REDIS_HOST=localhost
-REDIS_PORT=6390
-REDIS_PASSWORD=$(random_secret 32)
-
-NOTIFICATION_SECRET_KEY=$(random_secret 48)
-
-FACE_SERVER_PORT=7059
-FACE_DETECTION_MODEL_PATH=./models/face-detector.onnx
-FACE_EMBEDDING_MODEL_PATH=./models/face-embedder.onnx
-FACE_DETECTION_INPUT_SIZE=640
-FACE_DETECTION_SCORE_THRESHOLD=0.5
-FACE_DETECTION_NMS_THRESHOLD=0.4
-FACE_MATCH_THRESHOLD=0.45
-FACE_MAX_IMAGE_BYTES=8388608
-FACE_EMBEDDING_DIMENSIONS=512
-EOF
-        if [ "$mode" = prod ]; then
-            printf '\nAPP_VERSION=latest\n' >>"$file"
-        fi
-    )
-}
-
 set_env_key() {
     if grep -q "^$2=" "$1" 2>/dev/null && [ "$(sed -n "s/^$2=//p" "$1" | tail -n 1)" = "$3" ]; then
         return
@@ -212,105 +130,6 @@ ensure_env_key() {
     ok "Added $2 to $(basename "$1")"
 }
 
-migrate_env_value() {
-    if [ "$(sed -n "s/^$2=//p" "$1" | tail -n 1)" = "$3" ]; then
-        set_env_key "$1" "$2" "$4"
-        ok "Updated $2 in $(basename "$1")"
-    fi
-}
-
-ensure_env() {
-    if [ "$MODE" = prod ]; then
-        file=$PROD_ENV
-    else
-        file=$DEV_ENV
-    fi
-    if [ -f "$file" ]; then
-        ok "Using existing $(basename "$file")"
-        ensure_env_key "$file" DISCOVERY_USERNAME proctor-discovery
-        migrate_env_value "$file" FACE_DETECTION_MODEL_PATH ./models/det_10g.onnx ./models/face-detector.onnx
-        migrate_env_value "$file" FACE_EMBEDDING_MODEL_PATH ./models/w600k_r50.onnx ./models/face-embedder.onnx
-        ensure_env_key "$file" DISCOVERY_PASSWORD "$(random_secret 48)"
-        return
-    fi
-    step "Creating $(basename "$file") with new random secrets"
-    write_env "$file" "$MODE"
-    ok "Wrote backend/$(basename "$file")"
-}
-
-host_path() {
-    if [ "$OS" = windows ] && command -v cygpath >/dev/null 2>&1; then
-        cygpath -m "$1"
-    else
-        printf '%s' "$1"
-    fi
-}
-
-docker_user() {
-    if [ "$OS" = linux ] || [ "$OS" = wsl ]; then
-        printf -- '--user %s:%s' "$(id -u)" "$(id -g)"
-    fi
-}
-
-file_sha256() {
-    if command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$1" | cut -d' ' -f1
-    elif command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 "$1" | cut -d' ' -f1
-    elif command -v docker >/dev/null 2>&1; then
-        MSYS_NO_PATHCONV=1 docker run --rm -v "$(host_path "$(dirname "$1")"):/models:ro" alpine:3.22 \
-            sha256sum "/models/$(basename "$1")" | cut -d' ' -f1
-    fi
-}
-
-model_valid() {
-    [ -s "$1" ] && [ "$(file_sha256 "$1")" = "$2" ]
-}
-
-download() {
-    url=$1
-    out=$2
-    rm -f "$out"
-    if command -v curl >/dev/null 2>&1; then
-        curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 --progress-bar -o "$out" "$url" && return 0
-    elif command -v wget >/dev/null 2>&1; then
-        wget -T 20 -t 3 -O "$out" "$url" && return 0
-    else
-        MSYS_NO_PATHCONV=1 docker run --rm $(docker_user) -v "$(host_path "$(dirname "$out")"):/models" alpine:3.22 \
-            wget -q -T 20 -O "/models/$(basename "$out")" "$url" && return 0
-    fi
-    rm -f "$out"
-    return 1
-}
-
-ensure_models() {
-    mkdir -p "$MODELS_DIR" || fail "Could not create backend/face-service/models."
-    for entry in "face-detector.onnx|$FACE_DETECTOR_URL|$FACE_DETECTOR_SHA256" \
-        "face-embedder.onnx|$FACE_EMBEDDER_URL|$FACE_EMBEDDER_SHA256"; do
-        name=${entry%%|*}
-        rest=${entry#*|}
-        url=${rest%%|*}
-        expected=${rest#*|}
-        model="$MODELS_DIR/$name"
-        if model_valid "$model" "$expected"; then
-            ok "Face recognition model $name present"
-            continue
-        fi
-        if [ -f "$model" ]; then
-            warn "backend/face-service/models/$name is damaged or outdated, downloading it again"
-        fi
-        step "Downloading face recognition model $name"
-        download "$url" "$model.part" \
-            || fail "Could not download $name. Download it from $url and save it as backend/face-service/models/$name"
-        if ! model_valid "$model.part" "$expected"; then
-            rm -f "$model.part"
-            fail "The downloaded $name does not match its checksum. Run ./setup.sh again, or download it from $url"
-        fi
-        mv "$model.part" "$model" || fail "Could not save backend/face-service/models/$name"
-        ok "Face recognition model $name ready"
-    done
-}
-
 env_value() {
     eval "current=\${$1:-}"
     if [ -n "$current" ]; then
@@ -327,18 +146,6 @@ env_value() {
     printf '%s' "$3"
 }
 
-compose() {
-    if [ "$MODE" = prod ]; then
-        docker compose -f docker-compose.prod.yaml --env-file .env.production "$@"
-    else
-        docker compose -f docker-compose.yaml "$@"
-    fi
-}
-
-stack_running() {
-    [ -n "$(compose ps --status running -q 2>/dev/null)" ]
-}
-
 port_busy() {
     if command -v ss >/dev/null 2>&1; then
         ss -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "[:.]$1\$"
@@ -353,83 +160,6 @@ port_busy() {
         return
     fi
     return 1
-}
-
-check_ports() {
-    if stack_running; then
-        ok "Stack is already running, it will be updated in place"
-        return
-    fi
-    busy=""
-    for entry in "$@"; do
-        name=${entry%%=*}
-        port=${entry#*=}
-        if port_busy "$port"; then
-            busy="$busy
-  port $port ($name)"
-        fi
-    done
-    if [ -n "$busy" ]; then
-        fail "These ports are already in use on this machine:$busy
-Stop the program using them, or choose another port, for example: FRONTEND_PORT=5174 ./setup.sh"
-    fi
-    ok "All required ports are free"
-}
-
-confirm_purge() {
-    if [ "$ASSUME_YES" = true ]; then
-        return
-    fi
-    [ -t 0 ] || fail "Refusing to delete data without confirmation. Run again with --yes to purge non-interactively."
-    warn "This deletes the $MODE database, Redis data, uploaded files, face enrollments and, for production, the TLS certificates. It cannot be undone."
-    printf 'Type yes to continue: '
-    read -r answer || answer=""
-    [ "$answer" = yes ] || fail "Purge cancelled, nothing was removed."
-}
-
-seed_admin() {
-    if [ -f "$SEED_FILE" ]; then
-        grep -o "'[^']*@[^']*'" "$SEED_FILE" 2>/dev/null | head -n 1 | tr -d "'"
-    fi
-}
-
-start_dev() {
-    frontend_port=$(env_value FRONTEND_PORT "$DEV_ENV" 5173)
-    gateway_port=$(env_value GATEWAY_SERVER_PORT "$DEV_ENV" 7050)
-    discovery_port=$(env_value DISCOVERY_SERVER_PORT "$DEV_ENV" 8761)
-    console_port=$(env_value S3_CONSOLE_PORT "$DEV_ENV" 9201)
-    FRONTEND_PORT=$frontend_port
-    GATEWAY_SERVER_PORT=$gateway_port
-    DISCOVERY_SERVER_PORT=$discovery_port
-    export FRONTEND_PORT GATEWAY_SERVER_PORT DISCOVERY_SERVER_PORT
-
-    step "Checking ports"
-    check_ports \
-        "frontend=$frontend_port" \
-        "api gateway=$gateway_port" \
-        "service registry=$discovery_port" \
-        "postgres=$(env_value POSTGRES_PORT "$DEV_ENV" 5433)" \
-        "redis=$(env_value REDIS_PORT "$DEV_ENV" 6390)" \
-        "minio=$(env_value S3_PORT "$DEV_ENV" 9200)" \
-        "minio console=$console_port"
-
-    step "Building and starting the development stack (the first build takes a few minutes)"
-    if ! compose up -d --build --remove-orphans --wait --wait-timeout 600; then
-        compose ps
-        fail "Some services did not become healthy. Inspect them with: ./setup.sh logs <service>"
-    fi
-
-    admin=$(seed_admin)
-    step "ProctorAI development stack is running"
-    printf '  App               http://localhost:%s\n' "$frontend_port"
-    printf '  API gateway       http://localhost:%s\n' "$gateway_port"
-    printf '  Service registry  http://localhost:%s (user %s, password is DISCOVERY_PASSWORD in backend/.env)\n' \
-        "$discovery_port" "$(env_value DISCOVERY_USERNAME "$DEV_ENV" proctor-discovery)"
-    printf '  MinIO console     http://localhost:%s\n' "$console_port"
-    if [ -n "$admin" ]; then
-        printf '  Sign in as        %s (password is in backend/init/07_seed.sql)\n' "$admin"
-    fi
-    printf '\n  Frontend edits reload instantly. After backend changes run ./setup.sh again.\n'
 }
 
 interactive() {
@@ -532,10 +262,10 @@ ask_email() {
 
 configure_domains() {
     step "Configuring domains"
-    APP_DOMAIN=$(normalize_domain "$(env_value APP_DOMAIN "$PROD_ENV" "")")
-    FILES_DOMAIN=$(normalize_domain "$(env_value FILES_DOMAIN "$PROD_ENV" "")")
-    REGISTRY_DOMAIN=$(normalize_domain "$(env_value REGISTRY_DOMAIN "$PROD_ENV" "")")
-    ACME_EMAIL=$(env_value ACME_EMAIL "$PROD_ENV" "")
+    APP_DOMAIN=$(normalize_domain "$(env_value APP_DOMAIN "$ENV_FILE" "")")
+    FILES_DOMAIN=$(normalize_domain "$(env_value FILES_DOMAIN "$ENV_FILE" "")")
+    REGISTRY_DOMAIN=$(normalize_domain "$(env_value REGISTRY_DOMAIN "$ENV_FILE" "")")
+    ACME_EMAIL=$(env_value ACME_EMAIL "$ENV_FILE" "")
 
     if interactive; then
         printf '  Enter a domain for each part of the system. Press Enter to keep the value in brackets,\n' >&2
@@ -563,7 +293,7 @@ configure_domains() {
         fail "The web app, file storage and service registry each need their own domain."
     fi
     if [ -n "$APP_DOMAIN$FILES_DOMAIN$REGISTRY_DOMAIN" ] && ! valid_email "$ACME_EMAIL"; then
-        fail "Domains need a contact email for TLS certificates. Run again with ACME_EMAIL=you@example.com ./setup.sh prod"
+        fail "Domains need a contact email for TLS certificates. Run again with ACME_EMAIL=you@example.com ./setup.sh"
     fi
     if [ -n "$APP_DOMAIN" ] && [ -z "$FILES_DOMAIN" ]; then
         warn "HTTPS for the web app also needs a file storage domain, so the web app stays on the IP address."
@@ -572,18 +302,18 @@ configure_domains() {
         warn "The file storage domain is only used together with a web app domain."
     fi
 
-    set_env_key "$PROD_ENV" APP_DOMAIN "$APP_DOMAIN"
-    set_env_key "$PROD_ENV" FILES_DOMAIN "$FILES_DOMAIN"
-    set_env_key "$PROD_ENV" REGISTRY_DOMAIN "$REGISTRY_DOMAIN"
-    set_env_key "$PROD_ENV" ACME_EMAIL "$ACME_EMAIL"
-    ok "Domains saved in backend/.env.production"
+    set_env_key "$ENV_FILE" APP_DOMAIN "$APP_DOMAIN"
+    set_env_key "$ENV_FILE" FILES_DOMAIN "$FILES_DOMAIN"
+    set_env_key "$ENV_FILE" REGISTRY_DOMAIN "$REGISTRY_DOMAIN"
+    set_env_key "$ENV_FILE" ACME_EMAIL "$ACME_EMAIL"
+    ok "Domains saved in .env"
 }
 
 load_domains() {
-    APP_DOMAIN=$(normalize_domain "$(env_value APP_DOMAIN "$PROD_ENV" "")")
-    FILES_DOMAIN=$(normalize_domain "$(env_value FILES_DOMAIN "$PROD_ENV" "")")
-    REGISTRY_DOMAIN=$(normalize_domain "$(env_value REGISTRY_DOMAIN "$PROD_ENV" "")")
-    ACME_EMAIL=$(env_value ACME_EMAIL "$PROD_ENV" "")
+    APP_DOMAIN=$(normalize_domain "$(env_value APP_DOMAIN "$ENV_FILE" "")")
+    FILES_DOMAIN=$(normalize_domain "$(env_value FILES_DOMAIN "$ENV_FILE" "")")
+    REGISTRY_DOMAIN=$(normalize_domain "$(env_value REGISTRY_DOMAIN "$ENV_FILE" "")")
+    ACME_EMAIL=$(env_value ACME_EMAIL "$ENV_FILE" "")
 }
 
 detect_public_ip() {
@@ -604,17 +334,17 @@ configure_public_ip() {
         PUBLIC_IP=$(detect_public_ip || true)
     fi
     if [ -z "$PUBLIC_IP" ]; then
-        PUBLIC_IP=$(sed -n 's/^PUBLIC_IP=//p' "$PROD_ENV" | tail -n 1)
+        PUBLIC_IP=$(sed -n 's/^PUBLIC_IP=//p' "$ENV_FILE" | tail -n 1)
     fi
     if [ -z "$PUBLIC_IP" ] && interactive; then
         PUBLIC_IP=$(ask_value "Public IPv4 address of this server" "")
     fi
     is_ipv4 "$PUBLIC_IP" \
-        || fail "Could not detect the public IP address. Run again with PUBLIC_IP=<address> ./setup.sh prod"
+        || fail "Could not detect the public IP address. Run again with PUBLIC_IP=<address> ./setup.sh"
     if is_private_ipv4 "$PUBLIC_IP"; then
         warn "$PUBLIC_IP is a private address. Browsers outside this network and Let's Encrypt cannot reach it."
     fi
-    set_env_key "$PROD_ENV" PUBLIC_IP "$PUBLIC_IP"
+    set_env_key "$ENV_FILE" PUBLIC_IP "$PUBLIC_IP"
     ok "Public IP address is $PUBLIC_IP"
 }
 
@@ -826,18 +556,8 @@ manage_origins() {
     fi
 }
 
-NATIVE_ORIGINS="tauri://localhost http://tauri.localhost https://tauri.localhost"
-
-manage_dev_origins() {
-    port=$(env_value FRONTEND_PORT "$DEV_ENV" 5173)
-    BLOCKED_HOSTS=""
-    BLOCKED_ENDPOINTS=$(local_endpoints "$(env_value S3_PORT "$DEV_ENV" 9200)" \
-        "$(env_value S3_CONSOLE_PORT "$DEV_ENV" 9201)" "$(env_value DISCOVERY_SERVER_PORT "$DEV_ENV" 8761)")
-    manage_origins "$DEV_ENV" "http://localhost:$port" "http://127.0.0.1:$port" $NATIVE_ORIGINS
-}
-
 apply_endpoints() {
-    FILES_PORT=$(env_value S3_PORT "$PROD_ENV" 9200)
+    FILES_PORT=$(env_value S3_PORT "$ENV_FILE" 9200)
     if [ "$WEB_MODE" = domain ]; then
         WEB_URL="https://$APP_DOMAIN"
         FILES_URL="https://$FILES_DOMAIN"
@@ -855,16 +575,16 @@ apply_endpoints() {
         BLOCKED_HOSTS="$BLOCKED_HOSTS $REGISTRY_DOMAIN=registry"
     fi
     BLOCKED_ENDPOINTS="$PUBLIC_IP:$FILES_PORT=files $(local_endpoints "$FILES_PORT" \
-        "$(env_value S3_CONSOLE_PORT "$PROD_ENV" 9201)" "$(env_value DISCOVERY_SERVER_PORT "$PROD_ENV" 8761)")"
-    manage_origins "$PROD_ENV" "$WEB_URL" $NATIVE_ORIGINS
-    set_env_key "$PROD_ENV" APP_COOKIE_SECURE "$cookie_secure"
-    set_env_key "$PROD_ENV" S3_PUBLIC_ENDPOINT "$FILES_URL"
-    set_env_key "$PROD_ENV" MINIO_CORS_ALLOW_ORIGIN "$ALLOWED_ORIGINS"
+        "$(env_value S3_CONSOLE_PORT "$ENV_FILE" 9201)" "$(env_value DISCOVERY_SERVER_PORT "$ENV_FILE" 8761)")"
+    manage_origins "$ENV_FILE" "$WEB_URL" $NATIVE_ORIGINS
+    set_env_key "$ENV_FILE" APP_COOKIE_SECURE "$cookie_secure"
+    set_env_key "$ENV_FILE" S3_PUBLIC_ENDPOINT "$FILES_URL"
+    set_env_key "$ENV_FILE" MINIO_CORS_ALLOW_ORIGIN "$ALLOWED_ORIGINS"
 }
 
 write_caddyfile() {
-    mkdir -p "$BACKEND_DIR/edge" || fail "Could not create backend/edge."
-    target="$BACKEND_DIR/edge/Caddyfile"
+    mkdir -p "$ROOT_DIR/edge" || fail "Could not create edge."
+    target="$ROOT_DIR/edge/Caddyfile"
     tmp="$target.tmp"
     if ! {
         printf '{\n'
@@ -948,18 +668,9 @@ EOF
         fi
     } >"$tmp"; then
         rm -f "$tmp"
-        fail "Could not write backend/edge/Caddyfile."
+        fail "Could not write edge/Caddyfile."
     fi
-    mv "$tmp" "$target" || fail "Could not write backend/edge/Caddyfile."
-}
-
-configure_production() {
-    configure_domains
-    configure_public_ip
-    evaluate_dns
-    apply_endpoints
-    write_caddyfile
-    ok "Edge proxy configured: web app $WEB_URL, file storage $FILES_URL"
+    mv "$tmp" "$target" || fail "Could not write edge/Caddyfile."
 }
 
 verify_https() {
@@ -976,7 +687,7 @@ verify_https() {
         attempt=$((attempt + 1))
         sleep 5
     done
-    warn "HTTPS for $1 is not working yet. Make sure TCP 80 and 443 are open to the internet, then check: ./setup.sh logs --prod edge"
+    warn "HTTPS for $1 is not working yet. Make sure TCP 80 and 443 are open to the internet, then check: ./setup.sh logs edge"
     return 1
 }
 
@@ -988,7 +699,7 @@ print_dns_records() {
         fi
     done
     if [ -z "$APP_DOMAIN$FILES_DOMAIN$REGISTRY_DOMAIN" ]; then
-        printf '\n  No domains are configured. To add them with automatic HTTPS, run ./setup.sh prod again.\n'
+        printf '\n  No domains are configured. To add them with automatic HTTPS, run ./setup.sh again.\n'
         return
     fi
     if [ "$pending" = true ]; then
@@ -1008,15 +719,152 @@ print_dns_records() {
     printf '\n  Also allow inbound TCP 80, TCP 443 and UDP 443 in your firewall or cloud security group.\n'
     if [ "$pending" = true ]; then
         printf '  DNS changes usually apply within minutes but can take up to 48 hours.\n'
-        printf '  Check progress with ./setup.sh dns, then run ./setup.sh prod again to switch to HTTPS.\n'
+        printf '  Check progress with ./setup.sh dns, then run ./setup.sh again to switch to HTTPS.\n'
     fi
 }
 
-print_prod_summary() {
-    admin=$(seed_admin)
-    user=$(env_value DISCOVERY_USERNAME "$PROD_ENV" proctor-discovery)
+write_env() {
+    (
+        umask 077
+        cat >"$ENV_FILE" <<ENV
+IMAGE_REPOSITORY=$DEFAULT_REPOSITORY
+PROCTOR_VERSION=$DEFAULT_VERSION
+
+POSTGRES_DB=proctor
+POSTGRES_USER=proctor_admin
+POSTGRES_PASSWORD=$(random_secret 32)
+AUTHENTICATOR_USER_NAME=authenticator
+AUTHENTICATOR_USER_PASSWORD=$(random_secret 32)
+APP_USER_NAME=proctor
+APP_USER_PASSWORD=$(random_secret 32)
+
+JWT_SECRET=$(random_secret 64)
+JWT_ISSUER=proctor.local
+JWT_ACCESS_EXPIRE_IN_SEC=900
+JWT_REFRESH_EXPIRE_IN_SEC=2592000
+
+DISCOVERY_USERNAME=proctor-discovery
+DISCOVERY_PASSWORD=$(random_secret 48)
+DISCOVERY_SERVER_PORT=8761
+
+MINIO_ROOT_USER=proctorminio
+MINIO_ROOT_PASSWORD=$(random_secret 32)
+S3_ACCESS_KEY=proctor-app
+S3_SECRET_KEY=$(random_secret 40)
+S3_BUCKET=proctor-files
+S3_PORT=9200
+S3_CONSOLE_PORT=9201
+
+REDIS_PASSWORD=$(random_secret 32)
+NOTIFICATION_SECRET_KEY=$(random_secret 48)
+
+FACE_DETECTION_INPUT_SIZE=640
+FACE_DETECTION_SCORE_THRESHOLD=0.5
+FACE_DETECTION_NMS_THRESHOLD=0.4
+FACE_MATCH_THRESHOLD=0.45
+FACE_MAX_IMAGE_BYTES=8388608
+FACE_EMBEDDING_DIMENSIONS=512
+ENV
+    ) || fail "Could not write .env."
+}
+
+ensure_env() {
+    if [ -f "$ENV_FILE" ]; then
+        ok "Using existing .env"
+        ensure_env_key "$ENV_FILE" IMAGE_REPOSITORY "$DEFAULT_REPOSITORY"
+        ensure_env_key "$ENV_FILE" PROCTOR_VERSION "$DEFAULT_VERSION"
+        return
+    fi
+    step "Creating .env with new random secrets"
+    write_env
+    ok "Wrote .env (keep a copy somewhere safe)"
+}
+
+compose() {
+    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+}
+
+stack_running() {
+    [ -n "$(compose ps --status running -q 2>/dev/null)" ]
+}
+
+check_ports() {
+    if stack_running; then
+        ok "Stack is already running, it will be updated in place"
+        return
+    fi
+    busy=""
+    for entry in "$@"; do
+        name=${entry%%=*}
+        port=${entry#*=}
+        if port_busy "$port"; then
+            busy="$busy
+  port $port ($name)"
+        fi
+    done
+    if [ -n "$busy" ]; then
+        fail "These ports are already in use on this machine:$busy
+Stop the program using them, then run ./setup.sh again."
+    fi
+    ok "All required ports are free"
+}
+
+sync_init() {
+    source_dir="$ROOT_DIR/../backend/init"
+    if [ -d "$source_dir" ]; then
+        rm -rf "$ROOT_DIR/init.tmp"
+        mkdir -p "$ROOT_DIR/init.tmp" && cp -p "$source_dir"/* "$ROOT_DIR/init.tmp/" \
+            || fail "Could not copy the database scripts from backend/init."
+        rm -rf "$ROOT_DIR/init"
+        mv "$ROOT_DIR/init.tmp" "$ROOT_DIR/init" || fail "Could not update the init folder."
+        ok "Database scripts synced from backend/init"
+    fi
+    ls "$ROOT_DIR"/init/*.sql >/dev/null 2>&1 \
+        || fail "The init folder with the database scripts is missing. Copy it next to setup.sh."
+}
+
+configure() {
+    configure_domains
+    configure_public_ip
+    evaluate_dns
+    apply_endpoints
+    write_caddyfile
+    ok "Edge proxy configured: web app $WEB_URL, file storage $FILES_URL"
+}
+
+pull_images() {
+    repository=$(env_value IMAGE_REPOSITORY "$ENV_FILE" "$DEFAULT_REPOSITORY")
+    version=$(env_value PROCTOR_VERSION "$ENV_FILE" "$DEFAULT_VERSION")
+    step "Pulling ProctorAI $version from $repository"
+    compose pull --quiet \
+        || fail "Could not pull the images. Check the internet connection. If the repository is private, run docker login first."
+    ok "Images ready"
+}
+
+database_query() {
+    printf '%s\n' "$1" | compose exec -T postgres sh -c 'psql -tAq -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+}
+
+secure_admin() {
+    default=$(database_query "select count(*) from users where email = '$ADMIN_EMAIL' and password = crypt('$SEEDED_PASSWORD', password);" 2>/dev/null | tr -d '[:space:]' || true)
+    if [ "$default" != 1 ]; then
+        return 0
+    fi
+    password=$(random_secret 20)
+    if database_query "update users set password = crypt('$password', gen_salt('bf', 12)) where email = '$ADMIN_EMAIL';" >/dev/null; then
+        set_env_key "$ENV_FILE" ADMIN_EMAIL "$ADMIN_EMAIL"
+        set_env_key "$ENV_FILE" ADMIN_PASSWORD "$password"
+        NEW_ADMIN_PASSWORD=$password
+        ok "Replaced the default administrator password with a random one"
+    else
+        warn "Could not replace the default administrator password. Sign in as $ADMIN_EMAIL and change it now."
+    fi
+}
+
+print_summary() {
+    user=$(env_value DISCOVERY_USERNAME "$ENV_FILE" proctor-discovery)
     tunnel="ssh -L 8761:127.0.0.1:8761 -L 9201:127.0.0.1:9201 <user>@$PUBLIC_IP"
-    step "ProctorAI production stack is running"
+    step "ProctorAI $(env_value PROCTOR_VERSION "$ENV_FILE" "$DEFAULT_VERSION") is running"
     if [ "$WEB_MODE" = domain ]; then
         printf '  Web app           %s\n' "$WEB_URL"
         printf '  File storage      %s\n' "$FILES_URL"
@@ -1035,30 +883,40 @@ print_prod_summary() {
             printf '  After DNS is set  https://%s\n' "$REGISTRY_DOMAIN"
         fi
     fi
-    printf '                    sign in as %s, the password is DISCOVERY_PASSWORD in backend/.env.production\n' "$user"
+    printf '                    sign in as %s, the password is DISCOVERY_PASSWORD in .env\n' "$user"
     printf '  MinIO console     http://localhost:9201 through the same SSH tunnel\n'
-    if [ -n "$admin" ]; then
-        printf '  Sign in as        %s (password is in backend/init/07_seed.sql, change it after the first login)\n' "$admin"
+    if [ -n "${NEW_ADMIN_PASSWORD:-}" ]; then
+        printf '  Administrator     %s / %s%s%s\n' "$ADMIN_EMAIL" "$BOLD" "$NEW_ADMIN_PASSWORD" "$RESET"
+        printf '                    shown once and saved as ADMIN_PASSWORD in .env. Change it after signing in.\n'
+    elif [ -n "$(env_value ADMIN_PASSWORD "$ENV_FILE" "")" ]; then
+        printf '  Administrator     %s, the initial password is ADMIN_PASSWORD in .env\n' "$ADMIN_EMAIL"
+    else
+        printf '  Administrator     %s\n' "$ADMIN_EMAIL"
     fi
-    printf '  Settings          backend/.env.production\n'
+    printf '  Settings          .env\n'
     print_dns_records
 }
 
-start_prod() {
+start() {
+    step "Preparing configuration"
+    ensure_env
+    sync_init
+    configure
+    check_docker
     step "Checking ports"
     check_ports \
         "http=80" \
         "https=443" \
-        "file storage=$(env_value S3_PORT "$PROD_ENV" 9200)" \
-        "service registry=$(env_value DISCOVERY_SERVER_PORT "$PROD_ENV" 8761)" \
-        "minio console=$(env_value S3_CONSOLE_PORT "$PROD_ENV" 9201)"
-
-    step "Building and starting the production stack (a clean build, this takes a few minutes)"
-    if ! compose up -d --build --remove-orphans --wait --wait-timeout 900; then
+        "file storage=$(env_value S3_PORT "$ENV_FILE" 9200)" \
+        "service registry=$(env_value DISCOVERY_SERVER_PORT "$ENV_FILE" 8761)" \
+        "minio console=$(env_value S3_CONSOLE_PORT "$ENV_FILE" 9201)"
+    pull_images
+    step "Starting the stack"
+    if ! compose up -d --remove-orphans --wait --wait-timeout 900; then
         compose ps
-        fail "Some services did not become healthy. Inspect them with: ./setup.sh logs --prod <service>"
+        fail "Some services did not become healthy. Inspect them with: ./setup.sh logs <service>"
     fi
-
+    secure_admin
     if [ "$WEB_MODE" = domain ] || [ "$REGISTRY_MODE" = domain ]; then
         step "Waiting for TLS certificates"
         if [ "$WEB_MODE" = domain ]; then
@@ -1069,96 +927,90 @@ start_prod() {
             verify_https "$REGISTRY_DOMAIN" /actuator/health || true
         fi
     fi
-    print_prod_summary
+    print_summary
 }
 
-show_dns() {
-    [ -f "$PROD_ENV" ] || fail "The production stack has not been set up yet. Run ./setup.sh prod first."
-    load_domains
-    configure_public_ip
-    evaluate_dns
-    if [ "$WEB_MODE" = domain ]; then
-        printf '\n  The web app and file storage are ready for HTTPS. Run ./setup.sh prod to switch.\n'
+confirm_purge() {
+    if [ "$ASSUME_YES" = true ]; then
+        return
     fi
-    print_dns_records
+    [ -t 0 ] || fail "Refusing to delete data without confirmation. Run again with --yes to purge non-interactively."
+    warn "This deletes the database, Redis data, uploaded files, face enrollments and TLS certificates. It cannot be undone."
+    printf 'Type yes to continue: '
+    read -r answer || answer=""
+    [ "$answer" = yes ] || fail "Purge cancelled, nothing was removed."
 }
 
-COMMAND=${1:-dev}
+require_env() {
+    [ -f "$ENV_FILE" ] || fail "ProctorAI has not been set up here yet. Run ./setup.sh first."
+}
+
+COMMAND=${1:-start}
 if [ "$#" -gt 0 ]; then
     shift
 fi
-MODE=dev
-SERVICE=""
 ASSUME_YES=false
+ARGUMENT=""
 for arg in "$@"; do
     case "$arg" in
-        --prod) MODE=prod ;;
-        --dev) MODE=dev ;;
         --yes | -y) ASSUME_YES=true ;;
         -*) fail "Unknown option: $arg" ;;
-        *) SERVICE=$arg ;;
+        *) ARGUMENT=$arg ;;
     esac
 done
 
 detect_os
+cd "$ROOT_DIR"
 
 case "$COMMAND" in
     help | -h | --help)
         usage
         ;;
-    dev | prod)
-        MODE=$COMMAND
-        step "Preparing configuration"
-        ensure_env
-        if [ "$MODE" = prod ]; then
-            configure_production
-        else
-            manage_dev_origins
+    start)
+        start
+        ;;
+    update)
+        require_env
+        if [ -n "$ARGUMENT" ]; then
+            printf '%s\n' "$ARGUMENT" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' || fail "Invalid version: $ARGUMENT"
+            set_env_key "$ENV_FILE" PROCTOR_VERSION "$ARGUMENT"
         fi
-        check_docker
-        cd "$BACKEND_DIR"
-        ensure_models
-        if [ "$MODE" = prod ]; then
-            start_prod
-        else
-            start_dev
-        fi
+        ASSUME_YES=true
+        start
         ;;
     env)
         step "Preparing configuration"
         ensure_env
         ;;
     dns)
-        MODE=prod
-        show_dns
-        ;;
-    purge)
-        check_docker
-        cd "$BACKEND_DIR"
-        if [ "$MODE" = prod ] && [ ! -f "$PROD_ENV" ]; then
-            fail "The production stack has not been set up yet. Run ./setup.sh prod first."
+        require_env
+        load_domains
+        configure_public_ip
+        evaluate_dns
+        if [ "$WEB_MODE" = domain ]; then
+            printf '\n  The web app and file storage are ready for HTTPS. Run ./setup.sh to switch.\n'
         fi
-        confirm_purge
-        step "Removing the $MODE containers and volumes"
-        compose down --volumes --remove-orphans || fail "Could not remove the $MODE stack."
-        ok "Removed the $MODE containers and deleted all of their data"
+        print_dns_records
         ;;
-    stop | down | status | logs)
+    status | logs | stop | down | purge)
+        require_env
         check_docker
-        cd "$BACKEND_DIR"
-        if [ "$MODE" = prod ] && [ ! -f "$PROD_ENV" ]; then
-            fail "The production stack has not been set up yet. Run ./setup.sh prod first."
-        fi
         case "$COMMAND" in
-            stop) compose stop && ok "Stopped the $MODE stack, all data is kept" ;;
-            down) compose down --remove-orphans && ok "Removed the $MODE containers, all data is kept" ;;
             status) compose ps ;;
             logs)
-                if [ -n "$SERVICE" ]; then
-                    compose logs -f --tail=200 "$SERVICE"
+                if [ -n "$ARGUMENT" ]; then
+                    compose logs -f --tail=200 "$ARGUMENT"
                 else
                     compose logs -f --tail=100
                 fi
+                ;;
+            stop) compose stop && ok "Stopped the stack, all data is kept" ;;
+            down) compose down --remove-orphans && ok "Removed the containers, all data is kept" ;;
+            purge)
+                confirm_purge
+                step "Removing the containers and volumes"
+                compose down --volumes --remove-orphans || fail "Could not remove the stack."
+                ok "Removed the containers and deleted all of their data"
                 ;;
         esac
         ;;

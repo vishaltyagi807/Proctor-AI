@@ -25,7 +25,7 @@ The backend runs only through Docker Compose. Start it from the repository root:
 ./setup.sh prod       # production stack
 ```
 
-The script generates `.env` (or `.env.production`) with random secrets, downloads the face models, and builds and starts every container. You can also call Compose directly from this folder:
+The script generates `.env` (or `.env.production`) with random secrets, downloads and verifies the face models, and builds and starts every container. You can also call Compose directly from this folder:
 
 ```bash
 docker compose up -d --build                                                    # development

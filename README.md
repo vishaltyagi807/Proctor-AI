@@ -6,7 +6,7 @@
 
 **An AI-assisted complaint, identity, and access-management platform built on reactive microservices.**
 
-Face recognition · Fine-grained RBAC with row-level security · Real-time notifications · One-command setup
+Face recognition · Fine-grained RBAC with row-level security · Real-time notifications · Web, desktop and mobile · One-command setup
 
 <br />
 
@@ -22,11 +22,73 @@ Face recognition · Fine-grained RBAC with row-level security · Real-time notif
 ![MinIO](https://img.shields.io/badge/MinIO-S3-C72E49?style=for-the-badge&logo=minio&logoColor=white)
 ![ONNX](https://img.shields.io/badge/ONNX_Runtime-InsightFace-005CED?style=for-the-badge&logo=onnx&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-[Features](#-features) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [Services](#-services) · [Configuration](#%EF%B8%8F-configuration) · [API](#-api-overview)
+[Get Started](#-get-started) · [Features](#-features) · [Production](#-production-deployment) · [Apps](#-desktop-and-mobile-apps) · [Architecture](#%EF%B8%8F-architecture) · [Configuration](#%EF%B8%8F-configuration) · [API](#-api-overview) · [Full Guide](GUIDE.md)
 
 </div>
+
+---
+
+## 🚀 Get Started
+
+Pick the path that matches what you want to do. Each one needs only **[Docker](https://docs.docker.com/get-docker/)**, except building the apps. New machine with nothing installed? **[GUIDE.md](GUIDE.md)** walks through installing everything, step by step, for Linux, macOS and Windows.
+
+### ⚡ 1. Fastest: run the published images
+
+Every service is prebuilt on Docker Hub ([`vishaltyagi807/proctor-ai`](https://hub.docker.com/r/vishaltyagi807/proctor-ai)). Nothing is compiled, so a server is up in about five minutes.
+
+```bash
+git clone --depth 1 https://github.com/vishaltyagi807/Proctor-AI.git
+cd Proctor-AI/docker
+./setup.sh
+```
+
+You only need the `docker/` folder, so you can also copy just that folder to a server. Setup creates the secrets, asks for your domains, sets up HTTPS, pulls the images and starts everything. It then shows a **one-time administrator password** for `admin@college.com`. See [`docker/README.md`](docker/README.md).
+
+### 🛠️ 2. Develop: run from source
+
+```bash
+git clone https://github.com/vishaltyagi807/Proctor-AI.git
+cd Proctor-AI
+./setup.sh
+```
+
+The first run takes a few minutes. Setup creates `backend/.env`, downloads the face recognition models (≈190 MB, once), then builds and starts the stack:
+
+| Service | URL |
+|---|---|
+| 🌐 Web app | http://localhost:5173 |
+| 🚪 API gateway | http://localhost:7050 |
+| 🧭 Service registry | http://localhost:8761 (user `proctor-discovery`, password `DISCOVERY_PASSWORD` in `backend/.env`) |
+| 🗄️ MinIO console | http://localhost:9201 |
+
+Sign in as `admin@college.com`. The development password is in `backend/init/07_seed.sql`. Frontend edits reload instantly. After backend changes, run `./setup.sh` again. To run your own build in production, use `./setup.sh prod` (see [Production Deployment](#-production-deployment)).
+
+### 📱 3. Build the desktop and mobile apps
+
+```bash
+./native-doctor.sh          # checks your machine and prints the install command for anything missing
+cd frontend && npm ci
+npm run tauri:build         # desktop installers for this OS
+npm run tauri:android:build # Android APK / AAB
+npm run tauri:ios:build     # iOS (on a Mac)
+```
+
+See [Desktop and Mobile Apps](#-desktop-and-mobile-apps) and section 6 of the [guide](GUIDE.md#6-desktop-and-mobile-apps).
+
+### Setup commands
+
+| Published images (`docker/setup.sh`) | From source (`./setup.sh`) | Does |
+|---|---|---|
+| `./setup.sh` | `./setup.sh` / `./setup.sh prod` | Set up and start (development / production) |
+| `./setup.sh update [version]` | `./setup.sh prod --yes` | Update to new images / rebuild from your code |
+| `./setup.sh dns` | `./setup.sh dns` | Show DNS records and whether they are in place |
+| `./setup.sh status` | `./setup.sh status [--prod]` | Show every container and its health |
+| `./setup.sh logs [service]` | `./setup.sh logs [--prod] [service]` | Follow logs |
+| `./setup.sh stop` / `down` | `./setup.sh stop` / `down [--prod]` | Stop or remove containers, keeping data |
+| `./setup.sh purge` | `./setup.sh purge [--prod]` | Delete everything, including data (asks to confirm) |
 
 ---
 
@@ -72,7 +134,7 @@ flowchart LR
     Services --> PG[(PostgreSQL 16<br/>+ pgvector + RLS)]
     Services --> RD[(Redis)]
     STOR --> S3[(MinIO / S3)]
-    FACE -.ONNX.-> M[[InsightFace<br/>buffalo_l]]
+    FACE -.ONNX.-> M[[Face models<br/>detector + embedder]]
 ```
 
 **Key design decisions**
@@ -84,63 +146,14 @@ flowchart LR
 
 ---
 
-## 🚀 Quick Start
-
-> **Prerequisite:** only [Docker](https://docs.docker.com/get-docker/) with Compose v2. You don't need Java, Node, or Postgres installed locally.
-
-```bash
-git clone https://github.com/vishaltyagi807/Proctor-AI.git
-cd Proctor-AI
-./setup.sh
-```
-
-The setup script handles everything on the first run:
-
-1. ✅ Checks the Docker and Compose versions
-2. 🔑 Generates `backend/.env` with fresh random secrets
-3. 🧠 Downloads the InsightFace face models (≈280 MB, one time only)
-4. 🔌 Verifies that the required ports are free
-5. 🐳 Builds and starts the full stack, then prints the URLs
-
-Once it's running:
-
-| Service | URL |
-|---|---|
-| 🌐 Web app | http://localhost:5173 |
-| 🚪 API gateway | http://localhost:7050 |
-| 🧭 Service registry | http://localhost:8761 |
-| 🗄️ MinIO console | http://localhost:9201 |
-
-> 🔑 The seeded admin account is printed at the end of setup. Its password is in `backend/init/07_seed.sql`.
-
-### Setup commands
-
-```bash
-./setup.sh              # set up and start the development stack (default)
-./setup.sh prod         # set up and start the production stack
-./setup.sh env          # only create backend/.env with random secrets (add --prod for .env.production)
-./setup.sh dns         # show the DNS records the production domains need, and whether they are in place
-./setup.sh status       # show every container and its health
-./setup.sh logs api-gateway   # follow logs for a service
-./setup.sh stop         # stop containers, keep data
-./setup.sh down         # remove containers, keep data
-./setup.sh purge        # remove containers AND volumes, deleting all data (asks to confirm, --yes skips)
-./setup.sh help         # show all options
-```
-
-Add `--prod` to `env`, `stop`, `down`, `purge`, `status`, or `logs` to act on the production stack.
-
-> 💡 In development, frontend edits hot-reload instantly. After backend changes, run `./setup.sh` again.
-
----
-
 ## 🌍 Production Deployment
 
-Run this on a Linux server with Docker installed and a public IP address:
+Run either of these on a Linux server with Docker and a public IP address. Both ask the same questions and configure the same hardened stack:
 
-```bash
-./setup.sh prod
-```
+| | Command | Use when |
+|---|---|---|
+| ⚡ Published images | `cd docker && ./setup.sh` | You want the released version, fast (recommended) |
+| 🏗️ From source | `./setup.sh prod` | You want to run your own changes |
 
 Setup asks for three domains and a contact email, then configures everything else on its own:
 
@@ -157,7 +170,8 @@ Setup asks for three domains and a contact email, then configures everything els
 2. The domains are checked against public DNS.
 3. A [Caddy](https://caddyserver.com) edge proxy is configured. It obtains and renews TLS certificates from Let's Encrypt (with ZeroSSL as a fallback), redirects HTTP to HTTPS, sends HSTS headers and serves HTTP/3.
 4. The allowed CORS origins, secure cookies, presigned file URLs and MinIO CORS are set to match, and updated again on every run (see below).
-5. The stack is built and started, and setup waits until every certificate is active.
+5. The stack is pulled (or built) and started, and setup waits until every certificate is active.
+6. With the published images, the default administrator password is replaced with a random one and shown once.
 
 **Add these DNS records** (setup prints them with your real IP address and the status of each one):
 
@@ -178,9 +192,27 @@ Also allow inbound **TCP 80**, **TCP 443** and **UDP 443** in your firewall or c
 | File storage | `http://<server-ip>:9200` | `https://files.example.com` |
 | Service registry | SSH tunnel to `http://localhost:8761` | `https://registry.example.com` |
 
-Check propagation with `./setup.sh dns`, then run `./setup.sh prod` again to switch to HTTPS. On reruns, press Enter to keep the saved domains. You can also pass `--yes` to skip the prompts, or set `APP_DOMAIN`, `FILES_DOMAIN`, `REGISTRY_DOMAIN`, `ACME_EMAIL` and `PUBLIC_IP` for unattended installs.
+Check propagation with `./setup.sh dns`, then run setup again (`./setup.sh` in `docker/`, or `./setup.sh prod`) to switch to HTTPS. On reruns, press Enter to keep the saved domains. You can also pass `--yes` to skip the prompts, or set `APP_DOMAIN`, `FILES_DOMAIN`, `REGISTRY_DOMAIN`, `ACME_EMAIL` and `PUBLIC_IP` for unattended installs.
 
 > 🔒 The IP stage is plain HTTP and meant only for the time until DNS is set. The service registry and the MinIO console are never exposed over plain HTTP. Reach them with `ssh -L 8761:127.0.0.1:8761 -L 9201:127.0.0.1:9201 <user>@<server-ip>`.
+
+---
+
+## 📱 Desktop and Mobile Apps
+
+The same React app ships as native apps through **Tauri 2**:
+
+| Platform | Output | Build on |
+|---|---|---|
+| 🪟 Windows | `.msi`, `.exe` installer | Windows |
+| 🍎 macOS | `.app`, `.dmg` (Intel and Apple Silicon) | macOS |
+| 🐧 Linux | `.deb`, `.rpm`, `.AppImage` | Linux |
+| 🤖 Android | `.apk`, `.aab` | Linux, macOS or Windows |
+| 📱 iOS | `.ipa` | macOS with Xcode |
+
+The apps connect to any ProctorAI server. Build one in with `VITE_SERVER_URL=https://app.example.com`, or let users enter the address at sign-in. They support live updates, system notifications, the camera for face recognition, native downloads, `proctorai://` deep links and safe areas on phones. Setup already allows the app origins on the server.
+
+Run `./native-doctor.sh` to see what your machine still needs, then follow section 6 of [GUIDE.md](GUIDE.md#6-desktop-and-mobile-apps) for development, release builds, signing and store uploads.
 
 ---
 
@@ -209,7 +241,13 @@ Check propagation with `./setup.sh dns`, then run `./setup.sh prod` again to swi
 
 ```
 ProctorAI/
-├── setup.sh                     # one-command setup & lifecycle script
+├── GUIDE.md                     # full setup, deployment and app build guide
+├── setup.sh                     # build-from-source setup & lifecycle script
+├── native-doctor.sh             # checks desktop and mobile build prerequisites
+├── docker/                      # deploy from published Docker Hub images
+│   ├── setup.sh
+│   ├── docker-compose.yaml
+│   └── init/                    # database scripts (synced from backend/init)
 ├── backend/
 │   ├── docker-compose.yaml      # development stack
 │   ├── docker-compose.prod.yaml # production stack
@@ -225,7 +263,10 @@ ProctorAI/
     │   ├── routes/              # TanStack Router routes
     │   ├── components/          # feature & UI components (shadcn/ui)
     │   ├── lib/                 # API client, session, permissions, queries
+    │   ├── platform/            # web, desktop and mobile integration
     │   └── hooks/
+    ├── src-tauri/               # Tauri app: Rust entry, plugins, icons, permissions
+    ├── brand/                   # logo sources (npm run icons)
     ├── Dockerfile
     └── nginx.conf
 ```
@@ -234,10 +275,11 @@ ProctorAI/
 
 ## ⚙️ Configuration
 
-`./setup.sh` generates the environment files automatically:
+Setup generates the environment files automatically:
 
 - **Development:** `backend/.env`
-- **Production:** `backend/.env.production`
+- **Production from source:** `backend/.env.production`
+- **Published images:** `docker/.env`
 
 See `backend/.env.example` for the full list. The most important variables are:
 
@@ -284,13 +326,13 @@ The database schema, RLS policies, security functions, triggers, and seed data l
 
 The `face-service` runs entirely **on-premises** without calling any external AI API.
 
-- **Detection:** SCRFD-10G (`det_10g.onnx`) with 5-point landmarks
-- **Embedding:** ArcFace R50 (`w600k_r50.onnx`) producing 512-d L2-normalised vectors
+- **Detection:** SCRFD-10G (`face-detector.onnx`) with 5-point landmarks
+- **Embedding:** ArcFace R50 (`face-embedder.onnx`) producing 512-d L2-normalised vectors
 - **Search:** pgvector cosine similarity through Spring AI's `VectorStore`
 - **Access control:** separate permissions for recognition, live recognition, match details, enrollment lock, import, and audit
 - **Abuse protection:** self-enrollment is capped, and a privileged user must unlock it
 
-`./setup.sh` downloads the models automatically. For details, see [`backend/face-service/README.md`](backend/face-service/README.md).
+`./setup.sh` downloads the models from Hugging Face on the first run and verifies their checksums. For details, see [`backend/face-service/README.md`](backend/face-service/README.md).
 
 ---
 
@@ -339,6 +381,7 @@ All requests go through the gateway at `http://localhost:7050`.
 - Tailwind CSS 4, shadcn/ui, Base UI
 - Motion, Recharts, cmdk, Lucide
 - Served by Nginx in production
+- Tauri 2 for Windows, macOS, Linux, Android and iOS
 
 </td>
 </tr>
@@ -353,7 +396,7 @@ Released under the [MIT License](LICENSE). © 2026 Varshit Tyagi.
 <div align="center">
 <br />
 
-Made with ❤️ by **Varshit Tyagi**
+Made with ❤️ by **Varshit Tyagi** and **Mohini Teotia**
 
 ⭐ Star this repo if you find it useful!
 
