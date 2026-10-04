@@ -13,12 +13,14 @@ RUN --mount=type=bind,target=/src,rw \
 FROM eclipse-temurin:21-jdk-alpine AS jre-musl
 ARG JAVA_MODULES
 ARG JLINK_FLAGS
-RUN jlink --add-modules "${JAVA_MODULES}" ${JLINK_FLAGS} --output /jre
+RUN jlink --add-modules "${JAVA_MODULES}" ${JLINK_FLAGS} --output /jre \
+    && rm -f /jre/lib/server/classes_nocoops.jsa
 
 FROM eclipse-temurin:21-jdk AS jre-glibc
 ARG JAVA_MODULES
 ARG JLINK_FLAGS
-RUN jlink --add-modules "${JAVA_MODULES}" ${JLINK_FLAGS} --output /jre
+RUN jlink --add-modules "${JAVA_MODULES}" ${JLINK_FLAGS} --output /jre \
+    && rm -f /jre/lib/server/classes_nocoops.jsa
 
 FROM eclipse-temurin:21-jdk-alpine AS extract
 ARG SERVICE
