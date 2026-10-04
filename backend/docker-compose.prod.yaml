@@ -24,7 +24,7 @@ x-backend-env: &backend-env
   REDIS_HOST: redis
   REDIS_PORT: "6379"
   REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${DISCOVERY_USERNAME:?DISCOVERY_USERNAME is required}:${DISCOVERY_PASSWORD:?DISCOVERY_PASSWORD is required}@discovery-server:8761/eureka
 
 x-backend-build: &backend-build
   context: .
@@ -54,7 +54,7 @@ x-backend: &backend
     discovery-server:
       condition: service_healthy
   healthcheck: &backend-health
-    test: [ "CMD-SHELL", "curl -fsS http://localhost:$$SERVER_PORT/actuator/health > /dev/null" ]
+    test: [ "CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:$$SERVER_PORT/actuator/health" ]
     interval: 15s
     timeout: 5s
     retries: 4
@@ -168,6 +168,9 @@ services:
     environment:
       <<: *java-prod
       SERVER_PORT: "8761"
+      DISCOVERY_USERNAME: ${DISCOVERY_USERNAME:?DISCOVERY_USERNAME is required}
+      DISCOVERY_PASSWORD: ${DISCOVERY_PASSWORD:?DISCOVERY_PASSWORD is required}
+      DISCOVERY_DASHBOARD_ENABLED: "false"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -199,7 +202,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${DISCOVERY_USERNAME:?DISCOVERY_USERNAME is required}:${DISCOVERY_PASSWORD:?DISCOVERY_PASSWORD is required}@discovery-server:8761/eureka
 
   auth-service:
     <<: *backend
@@ -322,6 +325,9 @@ services:
       args:
         <<: *backend-build-args
         SERVICE: face-service
+    healthcheck:
+      <<: *backend-health
+      test: [ "CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7059/actuator/health" ]
     environment:
       <<: *backend-env
       SERVER_PORT: "7059"

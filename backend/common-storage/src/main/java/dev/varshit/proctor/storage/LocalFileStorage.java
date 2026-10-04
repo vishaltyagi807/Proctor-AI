@@ -11,10 +11,13 @@ import reactor.core.scheduler.Schedulers;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class LocalFileStorage implements FileStorage {
 
@@ -89,6 +92,28 @@ public class LocalFileStorage implements FileStorage {
             } catch (IOException ignored) {
             }
         }).subscribeOn(Schedulers.boundedElastic()).then();
+    }
+
+    @Override
+    public Mono<Long> purgeOlderThan(Duration age) {
+        return Mono.fromCallable(() -> {
+            if (!Files.isDirectory(root)) {
+                return 0L;
+            }
+            Instant cutoff = Instant.now().minus(age);
+            long removed = 0;
+            try (Stream<Path> paths = Files.walk(root)) {
+                for (Path path : paths.filter(Files::isRegularFile).toList()) {
+                    try {
+                        if (Files.getLastModifiedTime(path).toInstant().isBefore(cutoff) && Files.deleteIfExists(path)) {
+                            removed++;
+                        }
+                    } catch (IOException ignored) {
+                    }
+                }
+            }
+            return removed;
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     private String sanitizeName(String name) {

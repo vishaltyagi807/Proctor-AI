@@ -39,13 +39,16 @@ Only Docker is required on this machine.
 Commands:
   dev       Set up and start the development stack (default)
   prod      Set up and start the production stack
+  env       Only create the env file with new random secrets, then exit
   stop      Stop the containers and keep all data
   down      Remove the containers and keep all data
+  purge     Remove the containers and all volumes, deleting every piece of data
   status    Show every container and its health
   logs      Follow logs, for example: ./setup.sh logs api-gateway
   help      Show this message
 
-Add --prod to stop, down, status or logs to act on the production stack.
+Add --prod to env, stop, down, purge, status or logs to act on the production stack.
+Add --yes to purge to skip the confirmation prompt.
 
 Environment overrides:
   FRONTEND_PORT, GATEWAY_SERVER_PORT, DISCOVERY_SERVER_PORT   development host ports
@@ -141,6 +144,8 @@ APP_STORAGE_DIR=./storage
 
 DISCOVERY_SERVER_PORT=8761
 DISCOVERY_SERVER_REFRESH_INTERVAL=2
+DISCOVERY_USERNAME=proctor-discovery
+DISCOVERY_PASSWORD=$(random_secret 48)
 
 MINIO_ROOT_USER=proctorminio
 MINIO_ROOT_PASSWORD=$(random_secret 32)
@@ -176,6 +181,22 @@ EOF
     )
 }
 
+ensure_env_key() {
+    if grep -q "^$2=." "$1" 2>/dev/null; then
+        return
+    fi
+    tmp="$1.tmp"
+    if ! (
+        umask 077
+        sed "/^$2=/d" "$1" >"$tmp" && printf '%s=%s\n' "$2" "$3" >>"$tmp"
+    ); then
+        rm -f "$tmp"
+        fail "Could not add $2 to $(basename "$1")."
+    fi
+    mv "$tmp" "$1" || fail "Could not update $(basename "$1")."
+    ok "Added $2 to $(basename "$1")"
+}
+
 ensure_env() {
     if [ "$MODE" = prod ]; then
         file=$PROD_ENV
@@ -184,6 +205,8 @@ ensure_env() {
     fi
     if [ -f "$file" ]; then
         ok "Using existing $(basename "$file")"
+        ensure_env_key "$file" DISCOVERY_USERNAME proctor-discovery
+        ensure_env_key "$file" DISCOVERY_PASSWORD "$(random_secret 48)"
         return
     fi
     step "Creating $(basename "$file") with new random secrets"
@@ -319,6 +342,17 @@ Stop the program using them, or choose another port, for example: FRONTEND_PORT=
     ok "All required ports are free"
 }
 
+confirm_purge() {
+    if [ "$ASSUME_YES" = true ]; then
+        return
+    fi
+    [ -t 0 ] || fail "Refusing to delete data without confirmation. Run again with --yes to purge non-interactively."
+    warn "This deletes the $MODE database, Redis data, uploaded files and face enrollments. It cannot be undone."
+    printf 'Type yes to continue: '
+    read -r answer || answer=""
+    [ "$answer" = yes ] || fail "Purge cancelled, nothing was removed."
+}
+
 seed_admin() {
     if [ -f "$SEED_FILE" ]; then
         grep -o "'[^']*@[^']*'" "$SEED_FILE" 2>/dev/null | head -n 1 | tr -d "'"
@@ -355,7 +389,8 @@ start_dev() {
     step "ProctorAI development stack is running"
     printf '  App               http://localhost:%s\n' "$frontend_port"
     printf '  API gateway       http://localhost:%s\n' "$gateway_port"
-    printf '  Service registry  http://localhost:%s\n' "$discovery_port"
+    printf '  Service registry  http://localhost:%s (user %s, password is DISCOVERY_PASSWORD in backend/.env)\n' \
+        "$discovery_port" "$(env_value DISCOVERY_USERNAME "$DEV_ENV" proctor-discovery)"
     printf '  MinIO console     http://localhost:%s\n' "$console_port"
     if [ -n "$admin" ]; then
         printf '  Sign in as        %s (password is in backend/init/07_seed.sql)\n' "$admin"
@@ -395,10 +430,12 @@ if [ "$#" -gt 0 ]; then
 fi
 MODE=dev
 SERVICE=""
+ASSUME_YES=false
 for arg in "$@"; do
     case "$arg" in
         --prod) MODE=prod ;;
         --dev) MODE=dev ;;
+        --yes | -y) ASSUME_YES=true ;;
         -*) fail "Unknown option: $arg" ;;
         *) SERVICE=$arg ;;
     esac
@@ -412,16 +449,31 @@ case "$COMMAND" in
         ;;
     dev | prod)
         MODE=$COMMAND
-        check_docker
-        cd "$BACKEND_DIR"
         step "Preparing configuration"
         ensure_env
+        check_docker
+        cd "$BACKEND_DIR"
         ensure_models
         if [ "$MODE" = prod ]; then
             start_prod
         else
             start_dev
         fi
+        ;;
+    env)
+        step "Preparing configuration"
+        ensure_env
+        ;;
+    purge)
+        check_docker
+        cd "$BACKEND_DIR"
+        if [ "$MODE" = prod ] && [ ! -f "$PROD_ENV" ]; then
+            fail "The production stack has not been set up yet. Run ./setup.sh prod first."
+        fi
+        confirm_purge
+        step "Removing the $MODE containers and volumes"
+        compose down --volumes --remove-orphans || fail "Could not remove the $MODE stack."
+        ok "Removed the $MODE containers and deleted all of their data"
         ;;
     stop | down | status | logs)
         check_docker

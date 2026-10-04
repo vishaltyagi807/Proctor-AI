@@ -116,14 +116,16 @@ Once it's running:
 ```bash
 ./setup.sh              # set up and start the development stack (default)
 ./setup.sh prod         # set up and start the production stack
+./setup.sh env          # only create backend/.env with random secrets (add --prod for .env.production)
 ./setup.sh status       # show every container and its health
 ./setup.sh logs api-gateway   # follow logs for a service
 ./setup.sh stop         # stop containers, keep data
 ./setup.sh down         # remove containers, keep data
+./setup.sh purge        # remove containers AND volumes, deleting all data (asks to confirm, --yes skips)
 ./setup.sh help         # show all options
 ```
 
-Add `--prod` to `stop`, `down`, `status`, or `logs` to act on the production stack.
+Add `--prod` to `env`, `stop`, `down`, `purge`, `status`, or `logs` to act on the production stack.
 
 > 💡 In development, frontend edits hot-reload instantly. After backend changes, run `./setup.sh` again.
 
