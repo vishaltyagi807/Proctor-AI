@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, FileSpreadsheet } from "lucide-react";
-import { api, apiUrl, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useProcesses } from "@/components/providers/processes";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -70,7 +70,7 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
     >
       <div className="space-y-4">
         <div className="flex justify-end">
-          <TemplateDownloadMenu href={apiUrl("/users/import/template")} />
+          <TemplateDownloadMenu path="/users/import/template" />
         </div>
         {!file ? (
           <Dropzone

@@ -32,9 +32,6 @@ replay_pid*.log
 service-account*.json
 firebase-adminsdk*.json
 
-face-service/models/*.onnx
-face-service/models/*.zip
-face-service/models/*.part
 storage/
 **/storage/
 !**/src/**/storage/
@@ -73,3 +70,7 @@ logs/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+edge/Caddyfile
+edge/Caddyfile.tmp
+face-service/models/*.onnx
+face-service/models/*.part

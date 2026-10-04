@@ -3,7 +3,6 @@ package dev.varshit.proctor.user.imports;
 import dev.varshit.proctor.notifications.progress.ProgressBroker;
 import dev.varshit.proctor.security.UserPrincipal;
 import dev.varshit.proctor.storage.FileStorage;
-import dev.varshit.proctor.storage.StoredFile;
 import dev.varshit.proctor.user.dto.CreateUserRequest;
 import dev.varshit.proctor.user.service.UserService;
 import jakarta.validation.ConstraintViolation;
@@ -53,19 +52,19 @@ public class AsyncUserImportService implements UserImportService {
     @Override
     public Mono<Started> start(FilePart file, UserPrincipal actor) {
         return lookup.load()
-                .flatMap(reference -> storage.store(file, "imports", EXTENSIONS)
-                        .flatMap(stored -> storage.resolve(stored.key())
-                                .flatMap(path -> parser.parse(path, reference))
-                                .flatMap(rows -> {
-                                    String processId = UUID.randomUUID().toString();
-                                    run(processId, stored, rows, reference, actor);
-                                    return Mono.just(new Started(processId, rows.size()));
-                                })
-                                .onErrorResume(error -> storage.delete(stored.key()).then(Mono.error(error)))));
+                .flatMap(reference -> Mono.usingWhen(
+                                storage.store(file, "imports", EXTENSIONS),
+                                stored -> storage.resolve(stored.key()).flatMap(path -> parser.parse(path, reference)),
+                                stored -> storage.delete(stored.key()))
+                        .map(rows -> {
+                            String processId = UUID.randomUUID().toString();
+                            run(processId, rows, reference, actor);
+                            return new Started(processId, rows.size());
+                        }))
+                .doFinally(signal -> storage.release(file).subscribe());
     }
 
-    private void run(String processId, StoredFile stored, List<ImportRow> rows, ImportReferenceData reference,
-                     UserPrincipal actor) {
+    private void run(String processId, List<ImportRow> rows, ImportReferenceData reference, UserPrincipal actor) {
         int total = rows.size();
         AtomicInteger processed = new AtomicInteger();
         publish(actor.id(), "process-progress", processId, "running", processed.get(), total,
@@ -74,7 +73,7 @@ public class AsyncUserImportService implements UserImportService {
                 .concatMap(row -> importOne(processId, row, reference, actor)
                         .doOnSuccess(unused -> publish(actor.id(), "process-progress", processId, "running",
                                 processed.incrementAndGet(), total, null)))
-                .then(Mono.defer(() -> storage.delete(stored.key())))
+                .then()
                 .doOnSuccess(unused -> publish(actor.id(), "process-done", processId, "done", processed.get(), total,
                         "Imported " + processed.get() + " of " + total + " users."))
                 .doOnError(error -> publish(actor.id(), "process-error", processId, "error", processed.get(), total,

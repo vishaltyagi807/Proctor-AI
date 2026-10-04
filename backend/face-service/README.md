@@ -9,7 +9,7 @@ the matched user data (or "not found" for unrecognized faces).
 - **Detection**: [SCRFD](https://github.com/deepinsight/insightface/tree/master/detection/scrfd)
   run locally via [ONNX Runtime](https://onnxruntime.ai/) (`com.microsoft.onnxruntime:onnxruntime`).
 - **Recognition**: [ArcFace](https://github.com/deepinsight/insightface/tree/master/recognition/arcface_torch)
-  (`w600k_r50`), also via ONNX Runtime, producing a 512-d L2-normalized embedding per face.
+  (`face-embedder.onnx`, ArcFace R50), also via ONNX Runtime, producing a 512-d L2-normalized embedding per face.
 - **Enrolled-face index**: Spring AI's `VectorStore` backed by `PgVectorStore` (pgvector on the
   same Postgres instance), used for storing and cosine-similarity-searching embeddings. Since
   Spring AI's `VectorStore` is built around *text* embeddings, this service plugs in a small
@@ -48,31 +48,24 @@ the matched user data (or "not found" for unrecognized faces).
   giving the user a fresh self-enroll cycle. `GET /faces/enrollments` reports `selfEnrollCount` and
   `selfEnrollLocked` per user so the UI can show lock state.
 
-## Required model files (not bundled)
+## Model files (downloaded by setup)
 
-Download these two ONNX files from InsightFace's public **buffalo_l** model pack and place them
-where `FACE_DETECTION_MODEL_PATH` / `FACE_EMBEDDING_MODEL_PATH` point (default: `./models/`,
-relative to the service's working directory):
+The two ONNX models are not stored in the repository. `./setup.sh` downloads them from
+Hugging Face into `backend/face-service/models/` on the first run, checks each file against its
+SHA-256 checksum, and downloads it again if it is missing or damaged. The face-service image
+copies them to `/app/models`.
 
-| File (as shipped in buffalo_l) | Purpose |
-|---|---|
-| `det_10g.onnx` | SCRFD-10G face detection + 5-point landmarks |
-| `w600k_r50.onnx` | ArcFace 512-d face embedding |
+| File | Model | Purpose | Download | SHA-256 |
+|---|---|---|---|---|
+| `face-detector.onnx` | SCRFD-10G | Face detection with 5-point landmarks | [Hugging Face](https://huggingface.co/vishaltyagi807/face-detector/resolve/main/face-detector.onnx) | `5838f7fe053675b1c7a08b633df49e7af5495cee0493c7dcf6697200b85b5b91` |
+| `face-embedder.onnx` | ArcFace R50 | 512-d face embedding | [Hugging Face](https://huggingface.co/vishaltyagi807/face-detector/resolve/main/face-embedder.onnx) | `4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43` |
 
-Easiest way to get them:
+Both files together are about 190 MB. To place them by hand (for example on a server without
+internet access), download both files from the links above into `backend/face-service/models/`.
+Setup accepts them as long as the checksums match.
 
-```bash
-pip install insightface
-python -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buffalo_l').prepare(ctx_id=-1)"
-```
-
-This downloads and unzips the pack to `~/.insightface/models/buffalo_l/`. Copy (or point the env
-vars directly at) `det_10g.onnx` and `w600k_r50.onnx` from there.
-
-Manual alternative — download `https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip`
-directly and unzip it (mirror if needed: `https://sourceforge.net/projects/insightface.mirror/files/v0.7/buffalo_l.zip/download`).
-
-Both files together are roughly 190MB.
+The models originate from InsightFace's buffalo_l pack, which InsightFace publishes for
+non-commercial research use. Check that license before distributing ProctorAI commercially.
 
 ### Expected model contracts
 
@@ -96,8 +89,8 @@ for that specific export — check those first.
 | Variable | Default | Purpose |
 |---|---|---|
 | `FACE_SERVER_PORT` | `7059` | HTTP port |
-| `FACE_DETECTION_MODEL_PATH` | `./models/det_10g.onnx` | Path to the detector ONNX file |
-| `FACE_EMBEDDING_MODEL_PATH` | `./models/w600k_r50.onnx` | Path to the recognizer ONNX file |
+| `FACE_DETECTION_MODEL_PATH` | `./models/face-detector.onnx` | Path to the detector ONNX file |
+| `FACE_EMBEDDING_MODEL_PATH` | `./models/face-embedder.onnx` | Path to the recognizer ONNX file |
 | `FACE_DETECTION_INPUT_SIZE` | `640` | Square input size fed to the detector |
 | `FACE_DETECTION_SCORE_THRESHOLD` | `0.5` | Minimum detector confidence to keep a box |
 | `FACE_DETECTION_NMS_THRESHOLD` | `0.4` | IoU threshold for non-max suppression |

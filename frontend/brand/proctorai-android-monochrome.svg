@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#ffffff"/>
+      <path fill="#000000" d="M368 512C424 428 600 428 656 512C600 596 424 596 368 512Z"/>
+      <circle cx="512" cy="512" r="40" fill="#ffffff"/>
+    </mask>
+  </defs>
+  <path fill="#000000" mask="url(#cut)" d="M512 192C590 246 684 276 768 284Q804 288 804 324V506C804 674 690 792 512 852C334 792 220 674 220 506V324Q220 288 256 284C340 276 434 246 512 192Z"/>
+</svg>

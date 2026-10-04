@@ -14,4 +14,10 @@ public class StorageAutoConfiguration {
     public FileStorage fileStorage(StorageProperties properties) {
         return new LocalFileStorage(properties);
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TemporaryFileSweeper temporaryFileSweeper(FileStorage storage, StorageProperties properties) {
+        return new TemporaryFileSweeper(storage, properties);
+    }
 }

@@ -7,7 +7,6 @@ import dev.varshit.proctor.persistence.rls.SecureTransaction;
 import dev.varshit.proctor.notifications.progress.ProgressBroker;
 import dev.varshit.proctor.security.UserPrincipal;
 import dev.varshit.proctor.storage.FileStorage;
-import dev.varshit.proctor.storage.StoredFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.codec.multipart.FilePart;
@@ -67,17 +66,18 @@ public class FaceBulkImportService {
 
     public Mono<Started> start(FilePart file, UserPrincipal actor) {
         return accessGuard.requireImport(actor, FaceAccessGuard.WRITE)
-                .then(storage.store(file, "face-imports", ZIP_EXTENSION))
-                .flatMap(stored -> storage.resolve(stored.key())
-                        .flatMap(this::readEntries)
-                        .flatMap(entries -> {
-                            String processId = UUID.randomUUID().toString();
-                            return transaction.monoAs(actor, () -> auditRepository.log("bulk_import", null, null, null,
-                                            entries.size(), file.filename()))
-                                    .then(Mono.fromRunnable(() -> run(processId, stored, entries, actor)))
-                                    .thenReturn(new Started(processId, entries.size()));
-                        })
-                        .onErrorResume(error -> storage.delete(stored.key()).then(Mono.error(error))));
+                .then(Mono.usingWhen(
+                        storage.store(file, "face-imports", ZIP_EXTENSION),
+                        stored -> storage.resolve(stored.key()).flatMap(this::readEntries),
+                        stored -> storage.delete(stored.key())))
+                .flatMap(entries -> {
+                    String processId = UUID.randomUUID().toString();
+                    return transaction.monoAs(actor, () -> auditRepository.log("bulk_import", null, null, null,
+                                    entries.size(), file.filename()))
+                            .then(Mono.fromRunnable(() -> run(processId, entries, actor)))
+                            .thenReturn(new Started(processId, entries.size()));
+                })
+                .doFinally(signal -> storage.release(file).subscribe());
     }
 
     private Mono<List<Entry>> readEntries(Path zipPath) {
@@ -113,7 +113,7 @@ public class FaceBulkImportService {
         return entries;
     }
 
-    private void run(String processId, StoredFile stored, List<Entry> entries, UserPrincipal actor) {
+    private void run(String processId, List<Entry> entries, UserPrincipal actor) {
         int total = entries.size();
         AtomicInteger processed = new AtomicInteger();
         publish(actor.id(), "process-progress", processId, "running", processed.get(), total,
@@ -122,7 +122,7 @@ public class FaceBulkImportService {
                 .concatMap(entry -> importOne(processId, entry, actor)
                         .doOnSuccess(unused -> publish(actor.id(), "process-progress", processId, "running",
                                 processed.incrementAndGet(), total, null)))
-                .then(Mono.defer(() -> storage.delete(stored.key())))
+                .then()
                 .doOnSuccess(unused -> publish(actor.id(), "process-done", processId, "done", processed.get(), total,
                         "Processed " + processed.get() + " of " + total + " photos."))
                 .doOnError(error -> publish(actor.id(), "process-error", processId, "error", processed.get(), total,

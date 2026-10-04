@@ -43,7 +43,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4">
+        <div className="fixed inset-0 z-50 grid place-items-center p-4 py-[calc(1rem+var(--safe-top))] px-[calc(1rem+max(var(--safe-left),var(--safe-right)))]">
           <motion.div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -98,7 +98,7 @@ export function Sheet({ open, onClose, title, children, side = "right" }: { open
             animate={{ x: 0 }}
             exit={{ x: from }}
             transition={{ type: "spring", stiffness: 340, damping: 34 }}
-            className={cn("absolute top-0 flex h-full w-[min(92vw,420px)] flex-col bg-card shadow-2xl", side === "right" ? "right-0 border-l" : "left-0 border-r")}
+            className={cn("absolute top-0 flex h-full w-[min(92vw,420px)] flex-col bg-card pb-safe pt-safe shadow-2xl", side === "right" ? "right-0 border-l pr-safe" : "left-0 border-r pl-safe")}
           >
             <div className="flex items-center justify-between border-b px-5 py-4">
               <h2 className="font-semibold">{title}</h2>

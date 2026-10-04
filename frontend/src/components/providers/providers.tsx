@@ -5,23 +5,23 @@ import { ThemeProvider } from "./theme";
 import { ToastProvider } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-function UnauthorizedRedirect({ client }: { client: QueryClient }) {
+function UnauthorizedRedirect({ client, onSessionExpired }: { client: QueryClient; onSessionExpired: () => void }) {
   useEffect(() => {
     onUnauthorized(() => {
       if (window.location.pathname === "/login") return;
       client.clear();
-      window.location.assign("/login?expired=1");
+      onSessionExpired();
     });
     return () => onUnauthorized(null);
-  }, [client]);
+  }, [client, onSessionExpired]);
   return null;
 }
 
-export function Providers({ client, children }: { client: QueryClient; children: React.ReactNode }) {
+export function Providers({ client, onSessionExpired, children }: { client: QueryClient; onSessionExpired: () => void; children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <ThemeProvider>
-        <UnauthorizedRedirect client={client} />
+        <UnauthorizedRedirect client={client} onSessionExpired={onSessionExpired} />
         <TooltipProvider delay={300}>
           <ToastProvider>{children}</ToastProvider>
         </TooltipProvider>

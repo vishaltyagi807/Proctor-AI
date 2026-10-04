@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions for the main ProctorAI window on desktop and mobile",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "https://*" }, { "url": "http://*" }]
+    },
+    "notification:default",
+    "upload:allow-download",
+    "dialog:allow-save",
+    "dialog:allow-open",
+    "dialog:allow-message",
+    "fs:allow-write-file",
+    "deep-link:default",
+    "opener:default",
+    "store:default",
+    "os:default"
+  ]
+}

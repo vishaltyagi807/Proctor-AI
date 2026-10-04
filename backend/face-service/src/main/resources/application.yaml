@@ -48,8 +48,8 @@ app:
   security:
     allowed-origins: ${APP_ALLOWED_ORIGINS}
   face:
-    detection-model-path: ${FACE_DETECTION_MODEL_PATH:./models/det_10g.onnx}
-    embedding-model-path: ${FACE_EMBEDDING_MODEL_PATH:./models/w600k_r50.onnx}
+    detection-model-path: ${FACE_DETECTION_MODEL_PATH:./models/face-detector.onnx}
+    embedding-model-path: ${FACE_EMBEDDING_MODEL_PATH:./models/face-embedder.onnx}
     detection-input-size: ${FACE_DETECTION_INPUT_SIZE:640}
     detection-score-threshold: ${FACE_DETECTION_SCORE_THRESHOLD:0.5}
     detection-nms-threshold: ${FACE_DETECTION_NMS_THRESHOLD:0.4}
@@ -61,6 +61,8 @@ app:
 app.storage:
   dir: ${APP_STORAGE_DIR:./storage}
   max-bytes: ${APP_STORAGE_MAX_BYTES:262144000}
+  temp-ttl: ${APP_STORAGE_TEMP_TTL:30m}
+  sweep-interval: ${APP_STORAGE_SWEEP_INTERVAL:15m}
 
 management:
   endpoints:

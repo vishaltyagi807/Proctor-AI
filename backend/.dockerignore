@@ -6,7 +6,6 @@
 **/*.iml
 .idea
 face-service/storage
-face-service/models/*.zip*
 user-service/storage
 postman
 seed-data
@@ -14,3 +13,5 @@ init
 docker-compose*.yaml
 Dockerfile
 .dockerignore
+edge
+face-service/models/*.part
