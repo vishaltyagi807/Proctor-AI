@@ -7,6 +7,7 @@ import { openStream } from "@/lib/stream";
 import { useToast } from "@/components/ui/toast";
 import type { AppNotification } from "@/lib/types";
 import { Hint } from "@/components/ui/hint";
+import { notifyNative } from "@/platform/notifications";
 
 export function NotificationBell() {
   const { data } = useApi<{ unread: number }>("/notifications/unread-count", { refetchInterval: 60_000 });
@@ -20,6 +21,7 @@ export function NotificationBell() {
           try {
             const notification = JSON.parse((event as MessageEvent).data) as AppNotification;
             toast.info(notification.title, notification.body ?? undefined);
+            void notifyNative(notification.title, notification.body ?? undefined);
           } catch {
             toast.info("New notification");
           }

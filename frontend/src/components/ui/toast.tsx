@@ -42,7 +42,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed right-4 top-4 z-[100] flex w-[min(92vw,380px)] flex-col gap-2" aria-live="polite">
+      <div className="pointer-events-none fixed right-[calc(1rem+var(--safe-right))] top-[calc(1rem+var(--safe-top))] z-[100] flex w-[min(92vw,380px)] flex-col gap-2" aria-live="polite">
         <AnimatePresence initial={false}>
           {toasts.map((toast) => {
             const Icon = icons[toast.kind];

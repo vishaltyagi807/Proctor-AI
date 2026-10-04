@@ -802,12 +802,14 @@ manage_origins() {
     fi
 }
 
+NATIVE_ORIGINS="tauri://localhost http://tauri.localhost https://tauri.localhost"
+
 manage_dev_origins() {
     port=$(env_value FRONTEND_PORT "$DEV_ENV" 5173)
     BLOCKED_HOSTS=""
     BLOCKED_ENDPOINTS=$(local_endpoints "$(env_value S3_PORT "$DEV_ENV" 9200)" \
         "$(env_value S3_CONSOLE_PORT "$DEV_ENV" 9201)" "$(env_value DISCOVERY_SERVER_PORT "$DEV_ENV" 8761)")
-    manage_origins "$DEV_ENV" "http://localhost:$port" "http://127.0.0.1:$port"
+    manage_origins "$DEV_ENV" "http://localhost:$port" "http://127.0.0.1:$port" $NATIVE_ORIGINS
 }
 
 apply_endpoints() {
@@ -830,7 +832,7 @@ apply_endpoints() {
     fi
     BLOCKED_ENDPOINTS="$PUBLIC_IP:$FILES_PORT=files $(local_endpoints "$FILES_PORT" \
         "$(env_value S3_CONSOLE_PORT "$PROD_ENV" 9201)" "$(env_value DISCOVERY_SERVER_PORT "$PROD_ENV" 8761)")"
-    manage_origins "$PROD_ENV" "$WEB_URL"
+    manage_origins "$PROD_ENV" "$WEB_URL" $NATIVE_ORIGINS
     set_env_key "$PROD_ENV" APP_COOKIE_SECURE "$cookie_secure"
     set_env_key "$PROD_ENV" S3_PUBLIC_ENDPOINT "$FILES_URL"
     set_env_key "$PROD_ENV" MINIO_CORS_ALLOW_ORIGIN "$ALLOWED_ORIGINS"

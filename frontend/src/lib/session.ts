@@ -1,5 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiError, api } from "./api";
+import { clearTokens, currentRefreshToken, saveTokens, TOKEN_DELIVERY, type TokenInfo } from "@/platform/auth";
+import { isNative } from "@/platform/env";
 import type { Session } from "./types";
 
 const quiet = { quiet: true };
@@ -23,11 +25,19 @@ export const sessionQuery = queryOptions({
 });
 
 export async function signIn(email: string, password: string): Promise<void> {
-  await api.post("/auth/login", { email, password }, quiet);
+  if (!isNative()) {
+    await api.post("/auth/login", { email, password }, quiet);
+    return;
+  }
+  const data = await api.post<{ tokenInfo?: TokenInfo }>("/auth/login", { email, password }, { ...quiet, headers: TOKEN_DELIVERY });
+  await saveTokens(data.tokenInfo);
 }
 
 export async function signOut(client: QueryClient, everywhere = false): Promise<void> {
-  await api.post(everywhere ? "/auth/logout-all" : "/auth/logout", {}, quiet).catch(() => undefined);
+  const refreshToken = currentRefreshToken();
+  const body = isNative() && refreshToken && !everywhere ? { refreshToken } : {};
+  await api.post(everywhere ? "/auth/logout-all" : "/auth/logout", body, quiet).catch(() => undefined);
+  if (isNative()) await clearTokens();
   await client.cancelQueries();
   client.removeQueries({ queryKey: sessionQuery.queryKey });
 }

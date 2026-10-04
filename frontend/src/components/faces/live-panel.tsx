@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { numberFaces } from "@/lib/faces";
 import { FaceList, FaceOverlay } from "./face-result";
 import type { FaceRecognizeResult } from "@/lib/types";
+import { isNative } from "@/platform/env";
 
 const SCAN_GAP_MS = 1000;
 const RETRY_MS = 5000;
@@ -48,7 +49,11 @@ export function LivePanel() {
       }
       setActive(true);
     } catch (cause) {
-      setError(cause instanceof DOMException && cause.name === "NotAllowedError" ? "Camera access was denied. Allow it in your browser settings to continue." : "No camera could be started on this device.");
+      setError(
+        cause instanceof DOMException && cause.name === "NotAllowedError"
+          ? `Camera access was denied. Allow it in your ${isNative() ? "device" : "browser"} settings to continue.`
+          : "No camera could be started on this device.",
+      );
     }
   };
 

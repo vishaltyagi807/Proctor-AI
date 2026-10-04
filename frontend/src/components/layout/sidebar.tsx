@@ -1,7 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { ShieldCheck } from "lucide-react";
 import { NAV } from "./nav";
+import { LogoMark } from "@/components/brand/logo-mark";
 import { useSession } from "@/components/providers/session";
 import { Avatar } from "@/components/ui/misc";
 import { HrefLink } from "@/components/ui/href-link";
@@ -19,9 +19,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <Link to="/" onClick={onNavigate} className="flex items-center gap-3 px-6 pb-4 pt-6">
-        <span className="relative grid size-10 place-items-center rounded-2xl gradient-brand-animated shadow-lg shadow-primary/40">
-          <ShieldCheck className="size-5 text-white" />
-        </span>
+        <LogoMark className="size-10 rounded-[22%] shadow-lg shadow-primary/40" />
         <span>
           <span className="block text-[17px] font-semibold leading-5 tracking-tight">ProctorAI</span>
           <span className="block text-[11px] uppercase tracking-[0.18em] text-sidebar-foreground/50">Complaints</span>
@@ -75,7 +73,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar() {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] border-r border-sidebar-border lg:block">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[calc(264px+var(--safe-left))] border-r border-sidebar-border bg-sidebar pb-safe pl-safe pt-safe lg:block">
       <SidebarContent />
     </aside>
   );

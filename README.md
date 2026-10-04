@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🛡️ ProctorAI
+<img src="frontend/brand/proctorai-icon.svg" alt="ProctorAI logo" width="112" />
+
+# ProctorAI
 
 **An AI-assisted complaint, identity, and access-management platform built on reactive microservices.**
 

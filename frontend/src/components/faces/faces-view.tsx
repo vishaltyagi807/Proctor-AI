@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { FileArchive, KeyRound, Lock, ScanFace, Trash2, UserPlus, Users2 } from "lucide-react";
-import { api, apiUrl, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useAction, useApi, useInvalidate } from "@/lib/query";
 import { ADMIN_PATHS, FACES_PATH } from "@/lib/paths";
 import { formatDate } from "@/lib/format";
@@ -324,7 +324,7 @@ function BulkZipImport() {
             One photo per person, named like <code className="break-all rounded bg-muted px-1">student0001@college.com.jpg</code>.
           </p>
         </div>
-        {can("face_import", "read") && <TemplateDownloadMenu href={apiUrl("/faces/enroll/bulk/template")} label="Template" />}
+        {can("face_import", "read") && <TemplateDownloadMenu path="/faces/enroll/bulk/template" label="Template" />}
       </div>
       {file ? (
         <div className="flex items-center gap-3 rounded-xl border p-3">

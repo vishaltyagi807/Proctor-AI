@@ -9,6 +9,7 @@ import { ProcessesPanel } from "./processes-panel";
 import { CommandPalette } from "./command-palette";
 import { useSession } from "@/components/providers/session";
 import { signOut } from "@/lib/session";
+import { ensureNotificationPermission } from "@/platform/notifications";
 import { Sheet } from "@/components/ui/modal";
 import { Avatar } from "@/components/ui/misc";
 import { Hint } from "@/components/ui/hint";
@@ -36,6 +37,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [client, navigate]);
 
   useEffect(() => {
+    void ensureNotificationPermission();
+  }, []);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -47,15 +52,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen px-safe lg:pl-0">
       <Sidebar />
       <Sheet open={drawer} onClose={() => setDrawer(false)} title="Menu" side="left">
         <SidebarContent onNavigate={() => setDrawer(false)} />
       </Sheet>
       <CommandPalette open={palette} onClose={() => setPalette(false)} onSignOut={handleSignOut} />
 
-      <div className="lg:pl-[264px]">
-        <header className="glass sticky top-0 z-20 flex h-16 items-center gap-3 border-x-0 border-t-0 px-4 sm:px-8">
+      <div className="lg:pl-[calc(264px+var(--safe-left))]">
+        <header className="glass sticky top-0 z-20 flex h-[calc(4rem+var(--safe-top))] items-center gap-3 border-x-0 border-t-0 px-4 pt-safe sm:px-8">
           <Hint label="Menu" side="bottom">
             <button onClick={() => setDrawer(true)} className="grid size-10 place-items-center rounded-xl border bg-card/60 lg:hidden" aria-label="Open menu">
               <MenuIcon className="size-5" />
@@ -105,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1400px] px-4 pb-[calc(2rem+var(--safe-bottom))] pt-8 sm:px-8">{children}</main>
       </div>
     </div>
   );

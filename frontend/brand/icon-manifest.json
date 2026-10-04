@@ -1,0 +1,8 @@
+{
+  "default": "proctorai-icon.svg",
+  "bg_color": "#5851f8",
+  "android_bg": "proctorai-android-bg.svg",
+  "android_fg": "proctorai-android-fg.svg",
+  "android_fg_scale": 80,
+  "android_monochrome": "proctorai-android-monochrome.svg"
+}

@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>ProctorAI</title>
+  <defs>
+    <filter id="dock" x="40" y="40" width="944" height="960" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="14"/>
+      <feOffset dy="12" result="blur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.32"/>
+      <feComposite in2="blur" operator="in" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#dock)">
+    <svg x="100" y="92" width="824" height="824" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="96" y1="64" x2="928" y2="960" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6a5cff"/>
+      <stop offset="0.52" stop-color="#5851f8"/>
+      <stop offset="1" stop-color="#c35dd9"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="230" cy="170" r="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3cbbf9" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#3cbbf9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ember" cx="860" cy="900" r="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff8be0" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ff8be0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sheen" x1="512" y1="0" x2="512" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="512" y1="196" x2="512" y2="846" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e9e6ff"/>
+    </linearGradient>
+    <linearGradient id="eye" x1="362" y1="430" x2="662" y2="590" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3cbbf9"/>
+      <stop offset="0.45" stop-color="#5851f8"/>
+      <stop offset="1" stop-color="#c35dd9"/>
+    </linearGradient>
+    <linearGradient id="pupil" x1="476" y1="466" x2="548" y2="538" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3321a8"/>
+      <stop offset="1" stop-color="#5851f8"/>
+    </linearGradient>
+    <filter id="lift" x="120" y="120" width="784" height="840" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="22"/>
+      <feOffset dy="26" result="blur"/>
+      <feFlood flood-color="#1b0f5c" flood-opacity="0.38"/>
+      <feComposite in2="blur" operator="in" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="round">
+      <rect width="1024" height="1024" rx="232"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect width="1024" height="1024" fill="url(#tile)"/>
+    <rect width="1024" height="1024" fill="url(#glow)"/>
+    <rect width="1024" height="1024" fill="url(#ember)"/>
+    <rect width="1024" height="560" fill="url(#sheen)"/>
+  </g>
+  <rect x="6" y="6" width="1012" height="1012" rx="226" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="12"/>
+  <g filter="url(#lift)">
+    <path fill="url(#shield)" d="M512 192C590 246 684 276 768 284Q804 288 804 324V506C804 674 690 792 512 852C334 792 220 674 220 506V324Q220 288 256 284C340 276 434 246 512 192Z"/>
+  </g>
+  <g fill="none" stroke="#5851f8" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M330 432V404Q330 380 354 380H386"/>
+    <path d="M638 380H670Q694 380 694 404V432"/>
+    <path d="M694 592V620Q694 644 670 644H638"/>
+    <path d="M386 644H354Q330 644 330 620V592"/>
+  </g>
+  <path fill="url(#eye)" d="M368 512C424 428 600 428 656 512C600 596 424 596 368 512Z"/>
+  <circle cx="512" cy="512" r="64" fill="#ffffff"/>
+  <circle cx="512" cy="512" r="38" fill="url(#pupil)"/>
+  <circle cx="528" cy="496" r="12" fill="#ffffff"/>
+</svg>
+  </g>
+</svg>

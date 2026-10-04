@@ -1,4 +1,7 @@
-export const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
+import { accessTokenFresh, authorization, clearTokens, currentRefreshToken, saveTokens, TOKEN_DELIVERY, type TokenInfo } from "@/platform/auth";
+import { isNative } from "@/platform/env";
+import { httpFetch } from "@/platform/http";
+import { apiBase } from "@/platform/server";
 
 let unauthorizedHandler: (() => void) | null = null;
 
@@ -17,9 +20,29 @@ export class ApiError extends Error {
 
 let refreshing: Promise<boolean> | null = null;
 
+async function refreshNative(): Promise<boolean> {
+  const refreshToken = currentRefreshToken();
+  if (!refreshToken) return false;
+  const response = await httpFetch(`${apiBase()}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...TOKEN_DELIVERY },
+    body: JSON.stringify({ refreshToken }),
+  });
+  if (!response.ok) {
+    if (response.status === 400 || response.status === 401 || response.status === 403) await clearTokens();
+    return false;
+  }
+  const data = (await response.json()) as { tokenInfo?: TokenInfo };
+  await saveTokens(data.tokenInfo);
+  return true;
+}
+
 export function refreshSession(): Promise<boolean> {
-  refreshing ??= fetch(`${API_BASE}/auth/refresh`, { method: "POST", credentials: "include" })
-    .then((response) => response.ok)
+  refreshing ??= (
+    isNative()
+      ? refreshNative()
+      : httpFetch(`${apiBase()}/auth/refresh`, { method: "POST", credentials: "include" }).then((response) => response.ok)
+  )
     .catch(() => false)
     .finally(() => {
       window.setTimeout(() => {
@@ -31,15 +54,36 @@ export function refreshSession(): Promise<boolean> {
 
 export type RequestOptions = RequestInit & { quiet?: boolean };
 
+export async function authHeaders(): Promise<Record<string, string>> {
+  if (!isNative()) return {};
+  if (!accessTokenFresh() && currentRefreshToken()) await refreshSession();
+  const value = authorization();
+  return value ? { Authorization: value } : {};
+}
+
 async function send(method: string, path: string, body: unknown, init: RequestInit | undefined): Promise<Response> {
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-  return fetch(`${API_BASE}${path}`, {
+  const headers = new Headers(init?.headers);
+  if (body !== undefined && !isForm && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  Object.entries(await authHeaders()).forEach(([name, value]) => headers.set(name, value));
+  return httpFetch(`${apiBase()}${path}`, {
     method,
     credentials: "include",
-    headers: body !== undefined && !isForm ? { "Content-Type": "application/json" } : undefined,
-    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     ...init,
+    headers,
+    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
   });
+}
+
+export async function apiResponse(path: string, init?: RequestInit): Promise<Response> {
+  let response = await send("GET", path, undefined, init);
+  if (response.status === 401 && (await refreshSession())) response = await send("GET", path, undefined, init);
+  if (response.status === 401) {
+    unauthorizedHandler?.();
+    throw new ApiError(401, "Session expired");
+  }
+  if (!response.ok) throw new ApiError(response.status, `Request failed (${response.status})`);
+  return response;
 }
 
 async function request<T>(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<T> {
@@ -79,7 +123,7 @@ export const api = {
 };
 
 export function apiUrl(path: string): string {
-  return `${API_BASE}${path}`;
+  return `${apiBase()}${path}`;
 }
 
 export function qs(params: Record<string, string | number | boolean | null | undefined | string[]>): string {

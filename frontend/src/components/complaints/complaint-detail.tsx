@@ -9,6 +9,7 @@ import { uploadComplaintFile } from "@/lib/uploads";
 import { formatBytes, formatDate, timeAgo } from "@/lib/format";
 import { useSession } from "@/components/providers/session";
 import { useToast } from "@/components/ui/toast";
+import { downloadFromUrl } from "@/platform/files";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
@@ -517,10 +518,16 @@ function FileCard({ complaintId, file, onPreview, onDelete }: { complaintId: str
   const isImage = file.contentType.startsWith("image/");
   const media = isImage || file.contentType.startsWith("video/") || file.contentType.startsWith("audio/");
   const thumbnail = useApi<{ url: string }>(isImage && file.status === "uploaded" ? `/complaints/${complaintId}/files/${file.id}/download-url?inline=true` : null);
+  const toast = useToast();
 
   async function download() {
-    const result = await api.get<{ url: string }>(`/complaints/${complaintId}/files/${file.id}/download-url`);
-    window.open(result.url, "_blank", "noopener");
+    try {
+      const result = await api.get<{ url: string }>(`/complaints/${complaintId}/files/${file.id}/download-url`);
+      const saved = await downloadFromUrl(result.url, file.fileName);
+      if (saved) toast.success("Download complete", saved);
+    } catch (cause) {
+      toast.error("Download failed", cause instanceof Error ? cause.message : undefined);
+    }
   }
 
   return (

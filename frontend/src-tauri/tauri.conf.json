@@ -1,31 +1,55 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Proctor AI",
-  "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "productName": "ProctorAI",
+  "version": "../package.json",
+  "identifier": "dev.varshit.proctorai",
   "build": {
-    "frontendDist": "../build",
+    "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "npm run dev:native",
+    "beforeBuildCommand": "npm run build:native"
   },
   "app": {
     "windows": [
       {
-        "title": "Proctor AI",
-        "width": 800,
-        "height": 600,
+        "label": "main",
+        "title": "ProctorAI",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 380,
+        "minHeight": 600,
+        "center": true,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data: blob: https: http:",
+        "media-src": "'self' blob: https: http:",
+        "font-src": "'self' data:",
+        "connect-src": "'self' ipc: http://ipc.localhost https: http:",
+        "worker-src": "'self' blob:",
+        "frame-src": "'none'",
+        "object-src": "'none'",
+        "base-uri": "'self'",
+        "form-action": "'self'"
+      },
+      "devCsp": null
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "category": "Productivity",
+    "shortDescription": "Complaint management with role based workflows",
+    "longDescription": "ProctorAI is a complaint, identity and access management workspace for students, staff and administrators.",
+    "publisher": "Varshit Tyagi & Mohini Teotia",
+    "copyright": "© 2026 Varshit Tyagi & Mohini Teotia",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -33,8 +57,29 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "entitlements": "Entitlements.plist"
+    },
+    "iOS": {
+      "minimumSystemVersion": "16.4"
+    },
     "android": {
+      "minSdkVersion": 26,
       "debugApplicationIdSuffix": ".debug"
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["proctorai"]
+      },
+      "mobile": [
+        {
+          "scheme": ["proctorai"],
+          "appLink": false
+        }
+      ]
     }
   }
 }
