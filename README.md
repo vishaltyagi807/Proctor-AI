@@ -102,7 +102,7 @@ Sign in with the default administrator account:
 |---|---|
 | `admin@college.com` | `admin123` |
 
-> ⚠️ `admin123` is the public development default. Change it after signing in on any machine others can reach. Deployments from the published images (path 1) replace it with a random password automatically.
+> ⚠️ `admin123` is the development default only (`ADMIN_PASSWORD` in `backend/.env`). Production setups, both `./setup.sh prod` and the published images, generate a random administrator password, show it once and save it as `ADMIN_PASSWORD`. Older deployments still on `admin123` are switched to a random password on the next run.
 
 Frontend edits reload instantly. After backend changes, run `./setup.sh` again. To run your own build in production, use `./setup.sh prod` (see [Production Deployment](#-production-deployment)).
 
@@ -289,12 +289,13 @@ ProctorAI/
 ├── clean-up.sh                  # deletes build output, node_modules and generated .env files
 ├── docker/                      # deploy from published Docker Hub images
 │   ├── setup.sh
-│   ├── docker-compose.yaml
-│   └── init/                    # database scripts (synced from backend/init)
+│   └── docker-compose.yaml
 ├── backend/
 │   ├── docker-compose.yaml      # development stack
 │   ├── docker-compose.prod.yaml # production stack
-│   ├── init/                    # Postgres schema, RLS, functions, triggers, seed
+│   ├── db-schema/               # Flyway migrations: schema, RLS, functions, triggers, seed
+│   ├── db-migrator/             # one-shot container that applies the migrations
+│   ├── test-support/            # Testcontainers helpers shared by the tests
 │   ├── common-*/                # shared libraries
 │   ├── *-service/               # microservices
 │   ├── api-gateway/
@@ -335,6 +336,10 @@ See `backend/.env.example` for the full list. The most important variables are:
 | `S3_PUBLIC_ENDPOINT` | File URL that browsers can reach |
 | `FACE_MATCH_THRESHOLD` | Cosine similarity threshold for a face match |
 | `FACE_DETECTION_SCORE_THRESHOLD` | Minimum face detection confidence |
+| `ADMIN_PASSWORD` | Password of the seeded administrator on a new database |
+| `APP_TRUSTED_PROXIES` | Proxies in front of the gateway that append to `X-Forwarded-For` (2 in production: Caddy and nginx, 1 in development) |
+| `LOGIN_RATE_LIMIT_REPLENISH` / `_BURST` / `_COST` | Per-IP sign-in limit at the gateway. The defaults allow 10 attempts at once, then 20 per minute |
+| `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT` | Per-account lockout after failed sign-ins (defaults: 10 failures, 15m) |
 
 **Allowed origins are managed by setup.** Every `./setup.sh` run rebuilds `APP_ALLOWED_ORIGINS` (and, in production, `MINIO_CORS_ALLOW_ORIGIN`) from what is actually served:
 
@@ -350,18 +355,24 @@ Host ports can be overridden with `FRONTEND_PORT`, `GATEWAY_SERVER_PORT`, and `D
 
 ### Database
 
-The database schema, RLS policies, security functions, triggers, and seed data live in `backend/init/` and are applied automatically when Postgres starts for the first time.
+The schema is managed with **Flyway**. The migrations live in `backend/db-schema/src/main/resources/db/migration/`. On every start, the `db-migrator` container applies any pending ones before the services start, so new releases upgrade existing databases automatically. Databases created by the old `init/` scripts are recognised and baselined at version 1.11, without changes.
 
-| File | Contents |
+| Migration | Contents |
 |---|---|
-| `01_create_roles.sh` | Database roles |
-| `02_extensions.sql` | Extensions (pgvector and others) |
-| `03_schema.sql` | Tables and types |
-| `04_security_functions.sql` | `can_access`, `has_scope`, and related functions |
-| `05_rls_policies.sql` | Row-level security policies |
-| `06*_*.sql` | Triggers and domain functions |
-| `07_seed.sql` | Permissions, roles, and the admin user |
-| `08_grants.sql` | Privileges |
+| `V1_1__roles.sql` | Database roles (`auth_owner`, `authenticator`, `proctor`) |
+| `V1_2__extensions.sql` | `pgcrypto`, `vector`, `hstore`, `uuid-ossp` |
+| `V1_3__schema.sql` | Tables, enums, and indexes |
+| `V1_4__security_functions.sql` | `can_access`, `has_scope`, and related helpers |
+| `V1_5__rls_policies.sql` | Row-level security policies |
+| `V1_6__triggers.sql` to `V1_9__monitor_functions.sql` | Triggers and domain functions |
+| `V1_10__seed.sql` | Permissions, default roles, and the admin user (password from `ADMIN_PASSWORD`) |
+| `V1_11__grants.sql` | Privileges for the roles |
+
+To change the schema, add a new file such as `V2__add_complaint_tags.sql`. Never edit a migration that has already been released.
+
+### Tests
+
+`cd backend && ./gradlew build` runs the test suite against a real PostgreSQL (pgvector) and Redis started with Testcontainers, so Docker must be running. The tests cover the migrations and upgrade baseline, the row-level security policies, the sign-in flow (token rotation, reuse detection, lockout), JWT validation, and the gateway's client address handling and rate limiting. Run them before publishing a new version.
 
 ---
 

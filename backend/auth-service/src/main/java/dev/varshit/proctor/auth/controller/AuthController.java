@@ -29,6 +29,7 @@ import java.util.Map;
 public class AuthController {
 
     private static final String DELIVERY_HEADER = "X-Token-Delivery";
+    private static final String CLIENT_HEADER = "X-Client-IP";
     private static final int MAX_AGENT_LENGTH = 255;
 
     private final AuthService authService;
@@ -101,9 +102,9 @@ public class AuthController {
         if (agent != null && agent.length() > MAX_AGENT_LENGTH) {
             agent = agent.substring(0, MAX_AGENT_LENGTH);
         }
-        String forwarded = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
+        String forwarded = exchange.getRequest().getHeaders().getFirst(CLIENT_HEADER);
         String ip = forwarded != null && !forwarded.isBlank()
-                ? forwarded.split(",")[0].trim()
+                ? forwarded.trim()
                 : exchange.getRequest().getRemoteAddress() == null ? null
                 : exchange.getRequest().getRemoteAddress().getAddress().getHostAddress();
         return new ClientContext(agent, ip);

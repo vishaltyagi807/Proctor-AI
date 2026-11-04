@@ -9,7 +9,6 @@ face-service/storage
 user-service/storage
 postman
 seed-data
-init
 docker-compose*.yaml
 Dockerfile
 .dockerignore

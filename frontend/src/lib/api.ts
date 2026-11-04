@@ -100,7 +100,10 @@ async function request<T>(method: string, path: string, body?: unknown, options?
   const text = await response.text();
   const data = text ? safeJson(text) : undefined;
   if (!response.ok) {
-    const message = (data as { message?: string } | undefined)?.message ?? `Request failed (${response.status})`;
+    const fallback = response.status === 429
+      ? "Too many attempts. Wait a minute and try again."
+      : `Request failed (${response.status})`;
+    const message = (data as { message?: string } | undefined)?.message ?? fallback;
     throw new ApiError(response.status, message);
   }
   return data as T;

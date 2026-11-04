@@ -8,8 +8,7 @@ Node.js or model downloads are needed.
 | File | Purpose |
 |---|---|
 | `setup.sh` | Creates `.env`, configures domains and HTTPS, pulls the images and runs the stack |
-| `docker-compose.yaml` | The hardened production stack |
-| `init/` | Database schema, security policies and seed data, applied when the database is first created |
+| `docker-compose.yaml` | The hardened production stack. Its `db-migrator` image creates and upgrades the database schema |
 
 ## Start
 
@@ -23,7 +22,7 @@ Setup does the following:
 2. Asks for the web app, file storage and service registry domains, and an email for TLS certificates
 3. Detects the public IP address, checks DNS and configures the Caddy edge proxy
 4. Pulls the images and starts every container, then waits until all of them are healthy
-5. Replaces the default administrator password with a random one and shows it once
+5. Shows the randomly generated administrator password once (saved as `ADMIN_PASSWORD` in `.env`)
 6. Prints the URLs and the DNS records that are still missing
 
 If the repository is private, run `docker login` first.

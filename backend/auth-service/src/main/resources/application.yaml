@@ -32,12 +32,15 @@ app:
   cookie:
     secure: ${APP_COOKIE_SECURE:true}
     same-site: ${APP_COOKIE_SAME_SITE:Lax}
+  login:
+    max-failures: ${LOGIN_MAX_FAILURES:10}
+    lockout: ${LOGIN_LOCKOUT:15m}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
 
 eureka:
   client:

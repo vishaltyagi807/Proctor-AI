@@ -87,7 +87,7 @@ sequenceDiagram
 ```
 
 - **Tokens.** Login returns a short-lived JWT access token (15 minutes by default). The refresh token (30 days by default) is kept in an HTTP-only cookie.
-- **Row-level security.** Each request runs in a transaction that sets `auth.uid` and `auth.email`. The RLS policies in `init/05_rls_policies.sql` use these values to filter every read and write.
+- **Row-level security.** Each request runs in a transaction that sets `auth.uid` and `auth.email`. The RLS policies in `db-schema/src/main/resources/db/migration/V1_5__rls_policies.sql` use these values to filter every read and write.
 - **Permissions.** A permission is a combination of entity, action (`read`, `write`, `update`, `delete`), and scope (`own`, `department`, `all`). Roles bundle permissions, and users get roles.
 - **Database roles.** Services connect through the low-privilege `authenticator` and `proctor` roles. They never use the database owner.
 - **Service registry.** Every Eureka call and the dashboard require `DISCOVERY_USERNAME` and `DISCOVERY_PASSWORD` (at least 32 characters). The server refuses to start without them, and only `/actuator/health` is public. Credentials are compared in constant time, and the dashboard is turned off in production.
@@ -96,23 +96,20 @@ sequenceDiagram
 
 ## 🗄️ Database
 
-`init/` holds the complete schema. Postgres applies it automatically the **first time** the `postgres_data` volume is created.
+The schema is managed by Flyway. `db-schema/src/main/resources/db/migration/` holds the migrations, and the `db-migrator` service applies them before any other service starts. It connects as the database owner (`POSTGRES_USER`) and fills in the `authenticator`, `proctor` and administrator passwords from `AUTHENTICATOR_USER_PASSWORD`, `APP_USER_PASSWORD` and `ADMIN_PASSWORD`. Databases created by the old `init/` scripts are baselined at version 1.11 on the first run, without changes.
 
-| File | Contents |
+| Migration | Contents |
 |---|---|
-| `01_create_roles.sh` | Database roles |
-| `02_extensions.sql` | `pgcrypto`, `vector`, `hstore`, `uuid-ossp` |
-| `03_schema.sql` | Tables, enums, and indexes |
-| `04_security_functions.sql` | `can_access`, `has_scope`, and related helpers |
-| `05_rls_policies.sql` | Row-level security policies |
-| `06_triggers.sql` | Triggers |
-| `06b_storage_functions.sql` | Storage functions |
-| `06c_notification_functions.sql` | Notification functions |
-| `06d_monitor_functions.sql` | Monitor functions |
-| `07_seed.sql` | Permissions, default roles, and the admin user |
-| `08_grants.sql` | Privileges for the roles |
+| `V1_1__roles.sql` | Database roles (`auth_owner`, `authenticator`, `proctor`) |
+| `V1_2__extensions.sql` | `pgcrypto`, `vector`, `hstore`, `uuid-ossp` |
+| `V1_3__schema.sql` | Tables, enums, and indexes |
+| `V1_4__security_functions.sql` | `can_access`, `has_scope`, and related helpers |
+| `V1_5__rls_policies.sql` | Row-level security policies |
+| `V1_6__triggers.sql` to `V1_9__monitor_functions.sql` | Triggers and domain functions |
+| `V1_10__seed.sql` | Permissions, default roles, and the admin user (password from `ADMIN_PASSWORD`) |
+| `V1_11__grants.sql` | Privileges for the roles |
 
-> ⚠️ **All schema and seed changes go in `init/`.** The project has no migration files. To apply your changes locally, run `./setup.sh purge`, then `./setup.sh`. Purging removes every container and volume, so it **deletes all data**.
+> ⚠️ **Schema and seed changes go in a new migration**, for example `V2__add_complaint_tags.sql`. Never edit a released migration. Run `./setup.sh` to apply it, and your data is kept.
 
 ---
 
@@ -170,6 +167,8 @@ Every variable is listed in [`.env.example`](.env.example).
 - 📮 **Postman:** import [`postman/ProctorAI.postman_collection.json`](postman/ProctorAI.postman_collection.json) together with the development or production environment file from the same folder.
 - 👥 **Sample data:** [`seed-data/users-bulk-import.csv`](seed-data/users-bulk-import.csv) is a ready-made file for the bulk user import. Its columns are `name, email, password, roles, departments, enabled, verified`.
 - 🩺 **Health checks:** every service exposes `/actuator/health`, and Compose uses it to start containers in dependency order.
+- 📈 **Metrics:** every service except the registry exposes `/actuator/prometheus` inside the Docker network. nginx refuses `/api/actuator/` so the gateway's metrics are not public.
+- ✅ **Tests:** `./gradlew build` runs unit tests and integration tests against PostgreSQL and Redis containers (Testcontainers, Docker required).
 
 ---
 
@@ -182,7 +181,9 @@ backend/
 ├── Dockerfile                  # multi-stage build for every service
 ├── docker-compose.yaml         # development stack
 ├── docker-compose.prod.yaml    # hardened production stack
-├── init/                       # schema, RLS, functions, seed
+├── db-schema/                  # Flyway migrations: schema, RLS, functions, seed
+├── db-migrator/                # applies the migrations, then exits
+├── test-support/               # Testcontainers PostgreSQL and Redis for tests
 ├── common-*/                   # shared libraries
 ├── *-service/                  # microservices
 ├── api-gateway/

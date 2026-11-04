@@ -5,7 +5,8 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ENV_FILE="$ROOT_DIR/.env"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.yaml"
 DEFAULT_REPOSITORY="vishaltyagi807/proctor-ai"
-DEFAULT_VERSION="1.0.0"
+DEFAULT_VERSION="1.1.0"
+MIGRATOR_SINCE="1.1.0"
 ADMIN_EMAIL="admin@college.com"
 SEEDED_PASSWORD="admin123"
 NATIVE_ORIGINS="tauri://localhost http://tauri.localhost https://tauri.localhost"
@@ -724,11 +725,15 @@ print_dns_records() {
 }
 
 write_env() {
+    NEW_ADMIN_PASSWORD=$(random_secret 20)
     (
         umask 077
         cat >"$ENV_FILE" <<ENV
 IMAGE_REPOSITORY=$DEFAULT_REPOSITORY
 PROCTOR_VERSION=$DEFAULT_VERSION
+
+ADMIN_EMAIL=$ADMIN_EMAIL
+ADMIN_PASSWORD=$NEW_ADMIN_PASSWORD
 
 POSTGRES_DB=proctor
 POSTGRES_USER=proctor_admin
@@ -773,6 +778,12 @@ ensure_env() {
         ok "Using existing .env"
         ensure_env_key "$ENV_FILE" IMAGE_REPOSITORY "$DEFAULT_REPOSITORY"
         ensure_env_key "$ENV_FILE" PROCTOR_VERSION "$DEFAULT_VERSION"
+        ensure_env_key "$ENV_FILE" ADMIN_PASSWORD "$(random_secret 20)"
+        current=$(env_value PROCTOR_VERSION "$ENV_FILE" "$DEFAULT_VERSION")
+        if [ "$current" = 1.0.0 ]; then
+            set_env_key "$ENV_FILE" PROCTOR_VERSION "$MIGRATOR_SINCE"
+            ok "Updated PROCTOR_VERSION from 1.0.0 to $MIGRATOR_SINCE, which manages the database schema with migrations"
+        fi
         return
     fi
     step "Creating .env with new random secrets"
@@ -807,20 +818,6 @@ check_ports() {
 Stop the program using them, then run ./setup.sh again."
     fi
     ok "All required ports are free"
-}
-
-sync_init() {
-    source_dir="$ROOT_DIR/../backend/init"
-    if [ -d "$source_dir" ]; then
-        rm -rf "$ROOT_DIR/init.tmp"
-        mkdir -p "$ROOT_DIR/init.tmp" && cp -p "$source_dir"/* "$ROOT_DIR/init.tmp/" \
-            || fail "Could not copy the database scripts from backend/init."
-        rm -rf "$ROOT_DIR/init"
-        mv "$ROOT_DIR/init.tmp" "$ROOT_DIR/init" || fail "Could not update the init folder."
-        ok "Database scripts synced from backend/init"
-    fi
-    ls "$ROOT_DIR"/init/*.sql >/dev/null 2>&1 \
-        || fail "The init folder with the database scripts is missing. Copy it next to setup.sh."
 }
 
 configure() {
@@ -900,7 +897,6 @@ print_summary() {
 start() {
     step "Preparing configuration"
     ensure_env
-    sync_init
     configure
     check_docker
     step "Checking ports"

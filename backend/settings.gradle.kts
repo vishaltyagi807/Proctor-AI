@@ -1,6 +1,9 @@
 rootProject.name = "backend"
 
 include("common-lib")
+include("db-schema")
+include("db-migrator")
+include("test-support")
 include("common-security")
 include("common-persistence")
 include("common-storage")

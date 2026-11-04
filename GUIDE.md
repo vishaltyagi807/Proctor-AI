@@ -377,7 +377,7 @@ Build and push every image from the repository root. Set `VERSION`, and bump `ve
 ```bash
 REPO=vishaltyagi807/proctor-ai
 VERSION=1.1.0
-for service in discovery-server api-gateway auth-service user-service department-service role-service \
+for service in db-migrator discovery-server api-gateway auth-service user-service department-service role-service \
                complaint-service storage-service custom-field-service notification-service monitor-service; do
   docker build --target service --build-arg SERVICE=$service --build-arg GRADLE_FLAGS=--no-build-cache \
     -t $REPO:$service-$VERSION -t $REPO:$service-latest backend
@@ -388,7 +388,9 @@ docker build --target prod -t $REPO:frontend-$VERSION -t $REPO:frontend-latest f
 docker push --all-tags $REPO
 ```
 
-Servers then move to it with `./setup.sh update <version>`. Database changes go in `backend/init/`. Running `docker/setup.sh` inside the repository copies them into `docker/init/` automatically.
+Servers then move to it with `./setup.sh update <version>`, and the `db-migrator` image applies any new database migrations on start.
+
+Run `cd backend && ./gradlew build` first. It runs the full test suite, which needs Docker.
 
 ---
 
@@ -423,7 +425,7 @@ Sign in with the default administrator account:
 |---|---|
 | `admin@college.com` | `admin123` |
 
-`admin123` is the public development default from `backend/init/07_seed.sql`. Change it in your profile after signing in on any machine others can reach. The published-image deployment (section 3) replaces it with a random password automatically.
+`admin123` is the development default, set as `ADMIN_PASSWORD` in `backend/.env`. Production setups (section 3 and section 5) generate a random password instead and show it once.
 
 ### 4.2 Everyday workflow
 
@@ -439,14 +441,9 @@ Sign in with the default administrator account:
 
 ### 4.3 Database changes
 
-The schema, row-level security policies, functions and seed data live in `backend/init/`. PostgreSQL applies them **only when the database volume is created**. The project has no migration files.
+The schema, row-level security policies, functions and seed data are Flyway migrations in `backend/db-schema/src/main/resources/db/migration/`. The `db-migrator` container applies pending migrations every time the stack starts, before any service starts.
 
-To apply a change in development:
-
-```bash
-./setup.sh purge     # deletes all development data, asks to confirm
-./setup.sh
-```
+To change the database, add a new migration with the next version, for example `V2__add_complaint_tags.sql`, then run `./setup.sh`. Your data is kept. Never edit a migration that has already been released: Flyway refuses to start when a released file changes. `cd backend && ./gradlew build` checks that every migration applies to an empty database and keeps the security tests passing.
 
 ### 4.4 Ports and allowed origins
 
@@ -587,7 +584,7 @@ Copy the new code to the server, then run:
 
 Setup rebuilds the images and replaces the containers. The data volumes and certificates are kept.
 
-Changes in `backend/init/` do **not** reach an existing production database, because the init scripts run only when the database is first created. Apply such changes to production by hand with `psql` before deploying code that needs them.
+New database migrations are applied automatically by the `db-migrator` container before the services start. Back up the database first (5.8). If a migration fails, the services do not start and `./setup.sh logs --prod db-migrator` shows why.
 
 ### 5.8 Backups
 
@@ -608,7 +605,11 @@ To restore the database into a running stack:
 $PROD exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < proctor-YYYY-MM-DD.dump
 ```
 
-### 5.9 Removing everything
+### 5.9 Metrics
+
+Every backend service exposes Prometheus metrics at `/actuator/prometheus` on its own port inside the Docker network, for example `http://auth-service:7051/actuator/prometheus`. The edge proxy does not publish them. Point a Prometheus server attached to the stack's network at the services, using the ports from the compose file. Log lines carry a trace ID that follows a request from the gateway through every service it calls.
+
+### 5.10 Removing everything
 
 ```bash
 ./setup.sh purge --prod
