@@ -10,7 +10,8 @@ FACE_DETECTOR_URL="https://huggingface.co/vishaltyagi807/face-detector/resolve/m
 FACE_EMBEDDER_URL="https://huggingface.co/vishaltyagi807/face-detector/resolve/main/face-embedder.onnx"
 FACE_DETECTOR_SHA256=5838f7fe053675b1c7a08b633df49e7af5495cee0493c7dcf6697200b85b5b91
 FACE_EMBEDDER_SHA256=4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43
-SEED_FILE="$BACKEND_DIR/init/07_seed.sql"
+SEED_FILE="$BACKEND_DIR/db-schema/src/main/resources/db/migration/V1_10__seed.sql"
+DEV_ADMIN_PASSWORD="admin123"
 
 if [ -t 1 ]; then
     BOLD=$(printf '\033[1m')
@@ -121,10 +122,13 @@ write_env() {
         site=${PUBLIC_URL:-http://localhost}
         files_url=${S3_PUBLIC_URL:-http://localhost:9200}
         cookie_secure=true
+        NEW_ADMIN_PASSWORD=$(random_secret 20)
+        admin_password=$NEW_ADMIN_PASSWORD
     else
         site=http://localhost:5173
         files_url=http://localhost:9200
         cookie_secure=false
+        admin_password=$DEV_ADMIN_PASSWORD
     fi
     (
         umask 077
@@ -132,6 +136,8 @@ write_env() {
 POSTGRES_DB=proctor
 POSTGRES_USER=proctor_admin
 POSTGRES_PASSWORD=$(random_secret 32)
+
+ADMIN_PASSWORD=$admin_password
 
 AUTHENTICATOR_USER_NAME=authenticator
 AUTHENTICATOR_USER_PASSWORD=$(random_secret 32)
@@ -231,6 +237,11 @@ ensure_env() {
         migrate_env_value "$file" FACE_DETECTION_MODEL_PATH ./models/det_10g.onnx ./models/face-detector.onnx
         migrate_env_value "$file" FACE_EMBEDDING_MODEL_PATH ./models/w600k_r50.onnx ./models/face-embedder.onnx
         ensure_env_key "$file" DISCOVERY_PASSWORD "$(random_secret 48)"
+        if [ "$MODE" = prod ]; then
+            ensure_env_key "$file" ADMIN_PASSWORD "$(random_secret 20)"
+        else
+            ensure_env_key "$file" ADMIN_PASSWORD "$DEV_ADMIN_PASSWORD"
+        fi
         return
     fi
     step "Creating $(basename "$file") with new random secrets"
@@ -427,7 +438,7 @@ start_dev() {
         "$discovery_port" "$(env_value DISCOVERY_USERNAME "$DEV_ENV" proctor-discovery)"
     printf '  MinIO console     http://localhost:%s\n' "$console_port"
     if [ -n "$admin" ]; then
-        printf '  Sign in as        %s / admin123\n' "$admin"
+        printf '  Sign in as        %s / %s\n' "$admin" "$(env_value ADMIN_PASSWORD "$DEV_ENV" "$DEV_ADMIN_PASSWORD")"
     fi
     printf '\n  Frontend edits reload instantly. After backend changes run ./setup.sh again.\n'
 }
@@ -1037,11 +1048,35 @@ print_prod_summary() {
     fi
     printf '                    sign in as %s, the password is DISCOVERY_PASSWORD in backend/.env.production\n' "$user"
     printf '  MinIO console     http://localhost:9201 through the same SSH tunnel\n'
-    if [ -n "$admin" ]; then
-        printf '  Sign in as        %s / admin123 (change this password right after the first login)\n' "$admin"
+    if [ -n "${NEW_ADMIN_PASSWORD:-}" ]; then
+        printf '  Administrator     %s / %s%s%s\n' "$admin" "$BOLD" "$NEW_ADMIN_PASSWORD" "$RESET"
+        printf '                    shown once and saved as ADMIN_PASSWORD in backend/.env.production. Change it after signing in.\n'
+    elif [ -n "$admin" ]; then
+        printf '  Administrator     %s, the initial password is ADMIN_PASSWORD in backend/.env.production\n' "$admin"
     fi
     printf '  Settings          backend/.env.production\n'
     print_dns_records
+}
+
+database_query() {
+    printf '%s\n' "$1" | compose exec -T postgres sh -c 'psql -tAq -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+}
+
+secure_admin() {
+    admin=$(seed_admin)
+    [ -n "$admin" ] || return 0
+    default=$(database_query "select count(*) from users where email = '$admin' and password = crypt('$DEV_ADMIN_PASSWORD', password);" 2>/dev/null | tr -d '[:space:]' || true)
+    if [ "$default" != 1 ]; then
+        return 0
+    fi
+    password=$(random_secret 20)
+    if database_query "update users set password = crypt('$password', gen_salt('bf', 12)) where email = '$admin';" >/dev/null; then
+        set_env_key "$PROD_ENV" ADMIN_PASSWORD "$password"
+        NEW_ADMIN_PASSWORD=$password
+        ok "Replaced the public default administrator password with a random one"
+    else
+        warn "Could not replace the default administrator password. Sign in as $admin and change it now."
+    fi
 }
 
 start_prod() {
@@ -1058,6 +1093,7 @@ start_prod() {
         compose ps
         fail "Some services did not become healthy. Inspect them with: ./setup.sh logs --prod <service>"
     fi
+    secure_admin
 
     if [ "$WEB_MODE" = domain ] || [ "$REGISTRY_MODE" = domain ]; then
         step "Waiting for TLS certificates"

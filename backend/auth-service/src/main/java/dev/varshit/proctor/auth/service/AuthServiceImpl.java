@@ -24,24 +24,30 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordHasher hasher;
     private final TokenService tokenService;
     private final DatabaseRefreshTokenService refreshTokens;
+    private final LoginAttemptGuard attempts;
     private final Mono<String> decoyHash;
 
     public AuthServiceImpl(CredentialsRepository repository, PasswordHasher hasher, TokenService tokenService,
-                           DatabaseRefreshTokenService refreshTokens) {
+                           DatabaseRefreshTokenService refreshTokens, LoginAttemptGuard attempts) {
         this.repository = repository;
         this.hasher = hasher;
         this.tokenService = tokenService;
         this.refreshTokens = refreshTokens;
+        this.attempts = attempts;
         this.decoyHash = hasher.hash("decoy-password-for-timing").cache();
     }
 
     @Override
     public Mono<LoginResult> login(LoginRequest request, ClientContext client) {
-        return repository.findByEmail(request.email().trim())
-                .flatMap(credentials -> verify(request.password(), credentials, client))
-                .switchIfEmpty(Mono.defer(() -> decoyHash
-                        .flatMap(hash -> hasher.matches(request.password(), hash))
-                        .then(Mono.error(new UnauthorizedException(INVALID)))));
+        String email = request.email().trim();
+        return attempts.check(email)
+                .then(repository.findByEmail(email)
+                        .flatMap(credentials -> verify(request.password(), credentials, client))
+                        .switchIfEmpty(Mono.defer(() -> decoyHash
+                                .flatMap(hash -> hasher.matches(request.password(), hash))
+                                .then(Mono.error(new UnauthorizedException(INVALID))))))
+                .onErrorResume(UnauthorizedException.class, e -> attempts.recordFailure(email).then(Mono.error(e)))
+                .flatMap(result -> attempts.reset(email).thenReturn(result));
     }
 
     @Override

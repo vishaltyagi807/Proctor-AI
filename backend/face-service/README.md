@@ -133,7 +133,7 @@ every other service.
 
 - Postgres image switched from `postgres:16` to `pgvector/pgvector:pg16` (drop-in compatible,
   just adds the `vector` extension's shared library).
-- `vector` extension is created by the privileged init role in `init/02_extensions.sql` (a
+- `vector` extension is created by the database owner in the `V1_2__extensions.sql` migration (a
   non-superuser `proctor` role cannot `CREATE EXTENSION` even with `IF NOT EXISTS` unless it's
   already installed).
 - `proctor` was granted `CREATE` on the `public` schema so Spring AI can create/own its

@@ -98,7 +98,7 @@ public class SecurityAutoConfiguration {
                 .exceptionHandling(e -> e.authenticationEntryPoint(handlers).accessDeniedHandler(handlers))
                 .authorizeExchange(auth -> auth
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
-                        .pathMatchers("/actuator/health").permitAll()
+                        .pathMatchers("/actuator/health", "/actuator/prometheus").permitAll()
                         .pathMatchers(publicPaths.length == 0 ? new String[]{"/__none__"} : publicPaths).permitAll()
                         .anyExchange().authenticated())
                 .addFilterAt(new JwtAuthenticationWebFilter(tokenService), SecurityWebFiltersOrder.AUTHENTICATION)

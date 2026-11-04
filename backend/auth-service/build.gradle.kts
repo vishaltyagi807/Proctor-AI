@@ -9,5 +9,6 @@ dependencies {
     implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation(project(":test-support"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

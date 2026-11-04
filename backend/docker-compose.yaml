@@ -29,6 +29,8 @@ x-backend: &backend
   depends_on: &backend-depends
     postgres:
       condition: service_healthy
+    db-migrator:
+      condition: service_completed_successfully
     redis:
       condition: service_healthy
     discovery-server:
@@ -60,10 +62,27 @@ services:
       start_period: 10s
       start_interval: 1s
     volumes:
-      - ./init:/docker-entrypoint-initdb.d:ro
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+
+  db-migrator:
+    image: proctor/db-migrator:dev
+    build:
+      <<: *backend-build
+      args:
+        SERVICE: db-migrator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *java-dev
+      MIGRATION_DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTHENTICATOR_USER_PASSWORD: ${AUTHENTICATOR_USER_PASSWORD}
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
 
   redis:
     image: redis:7.4.11-alpine
@@ -163,6 +182,10 @@ services:
     environment:
       <<: *java-dev
       SERVER_PORT: "7050"
+      APP_TRUSTED_PROXIES: ${APP_TRUSTED_PROXIES:-1}
+      LOGIN_RATE_LIMIT_REPLENISH: ${LOGIN_RATE_LIMIT_REPLENISH:-1}
+      LOGIN_RATE_LIMIT_BURST: ${LOGIN_RATE_LIMIT_BURST:-30}
+      LOGIN_RATE_LIMIT_COST: ${LOGIN_RATE_LIMIT_COST:-3}
       APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:-http://localhost:5173}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -181,6 +204,8 @@ services:
     environment:
       <<: *backend-env
       SERVER_PORT: "7051"
+      LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-10}
+      LOGIN_LOCKOUT: ${LOGIN_LOCKOUT:-15m}
       AUTHENTICATOR_USER_NAME: ${AUTHENTICATOR_USER_NAME}
       AUTHENTICATOR_USER_PASSWORD: ${AUTHENTICATOR_USER_PASSWORD}
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
