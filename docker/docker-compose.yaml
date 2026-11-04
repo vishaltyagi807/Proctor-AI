@@ -124,7 +124,7 @@ services:
       - redis_data:/data
 
   minio:
-    image: quay.io/minio/minio:latest@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    image: pgsty/minio:latest@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
     restart: unless-stopped
     logging: *logging
     command: server /data --console-address ":9001"
@@ -146,7 +146,7 @@ services:
       - "127.0.0.1:${S3_CONSOLE_PORT:-9201}:9001"
 
   minio-init:
-    image: quay.io/minio/mc:latest@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+    image: pgsty/minio:latest@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
     logging: *logging
     depends_on:
       minio:
